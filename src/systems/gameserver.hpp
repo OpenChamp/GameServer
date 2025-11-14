@@ -17,6 +17,7 @@
 #include "minion_movement_system.hpp"
 #include "minion_damage_system.hpp"
 #include "minion_serializer.hpp"
+#include "libs/frame_timer.h"
 
 /**
  * Central GameServer class encapsulating all server state and logic.
@@ -108,6 +109,12 @@ private:
     int port_;
     int max_clients_;
     ENetHost* enet_server_;
+
+    // Server configuration
+
+    // Server tick rate in milliseconds
+    // TODO this should be configurable, probably - ploinky 14/11/2025
+    FrameTimer frame_timer_ = FrameTimer(30);
     
     // Server state
     std::atomic<bool> shutdown_requested_;

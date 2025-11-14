@@ -48,6 +48,8 @@ endif()
 # Source files for gameserver executable
 set(GAMESERVER_SOURCES
 	src/main.cpp
+	src/services/navigation_service.cpp
+	src/systems/data_loader.cpp
 	src/systems/gameserver.cpp
 	src/systems/map_system.cpp
 	src/systems/minion_serializer.cpp
@@ -71,7 +73,8 @@ set(GAMESERVER_HEADERS
 	src/components/map.hpp
 	src/components/navmesh.hpp
 	src/components/minion.hpp
-	src/systems/data_loader.cpp
+	src/services/navigation_service.hpp
+	src/systems/data_loader.hpp
 	src/systems/map_system.hpp
 	src/systems/minion_spawner_system.hpp
 	src/systems/minion_movement_system.hpp

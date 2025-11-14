@@ -21,14 +21,14 @@ static GameServer* g_server_instance = nullptr;
 // Signal handler for graceful shutdown
 void signal_handler(int signal) {
     if (signal == SIGINT && g_server_instance) {
-        printf("\nShutdown signal received. Cleaning up...\n");
+        LOG_INFO("Shutdown signal received. Cleaning up...");
         g_server_instance->request_shutdown();
     }
 }
 
 int main() {
-    printf("OpenChamp GameServer Starting\n");
-    printf("==============================\n");
+    LOG_INFO("OpenChamp GameServer Starting");
+    LOG_INFO("==============================");
     
     // Parse port from environment
     int env_port = DEFAULT_PORT;
@@ -37,17 +37,17 @@ int main() {
         try {
             env_port = std::stoi(port_env);
             if (env_port <= MIN_PORT || env_port > MAX_PORT) {
-                fprintf(stderr, "Invalid port number: %s. Using default %d\n", port_env, DEFAULT_PORT);
+                LOG_ERROR("Invalid port number: %s. Using default %d", port_env, DEFAULT_PORT);
                 env_port = DEFAULT_PORT;
             } else {
-                printf("Using port from environment: %d\n", env_port);
+                LOG_INFO("Using port from environment: %d\n", env_port);
             }
         } catch (const std::exception& e) {
-            fprintf(stderr, "Failed to parse SERVER_PORT: %s. Using default %d\n", e.what(), DEFAULT_PORT);
+            LOG_ERROR("Failed to parse SERVER_PORT: %s. Using default %d", e.what(), DEFAULT_PORT);
             env_port = DEFAULT_PORT;
         }
     } else {
-        printf("No port specified in environment, using default %d\n", DEFAULT_PORT);
+        LOG_INFO("No port specified in environment, using default %d", DEFAULT_PORT);
     }
     
     // Parse max clients from environment
@@ -57,17 +57,17 @@ int main() {
         try {
             max_clients = std::stoi(clients_env);
             if (max_clients <= 0 || max_clients > MAX_CLIENTS_LIMIT) {
-                fprintf(stderr, "Invalid MAX_CLIENTS: %s. Using default %d\n", clients_env, DEFAULT_MAX_CLIENTS);
+                LOG_ERROR("Invalid MAX_CLIENTS: %s. Using default %d", clients_env, DEFAULT_MAX_CLIENTS);
                 max_clients = DEFAULT_MAX_CLIENTS;
             } else {
-                printf("Using MAX_CLIENTS from environment: %d\n", max_clients);
+                LOG_INFO("Using MAX_CLIENTS from environment: %d", max_clients);
             }
         } catch (const std::exception& e) {
-            fprintf(stderr, "Failed to parse MAX_CLIENTS: %s. Using default %d\n", e.what(), DEFAULT_MAX_CLIENTS);
+            LOG_ERROR("Failed to parse MAX_CLIENTS: %s. Using default %d", e.what(), DEFAULT_MAX_CLIENTS);
             max_clients = DEFAULT_MAX_CLIENTS;
         }
     } else {
-        printf("No MAX_CLIENTS specified in environment, using default %d\n", DEFAULT_MAX_CLIENTS);
+        LOG_INFO("No MAX_CLIENTS specified in environment, using default %d", DEFAULT_MAX_CLIENTS);
     }
     
     // Create and initialize server
@@ -75,7 +75,7 @@ int main() {
     
     ERROR_CODE init_result = server.initialize();
     if (init_result != ERROR_CODE::ERROR_NONE) {
-        fprintf(stderr, "Failed to initialize server: %d\n", (int)(init_result));
+        LOG_ERROR("Failed to initialize server: %d", (int)(init_result));
         return (int)(init_result);
     }
     
@@ -86,6 +86,6 @@ int main() {
     // Run the server main loop
     server.run();
     // Cleanup happens automatically in GameServer destructor
-    printf("Server shutdown complete.\n");
+    LOG_INFO("Server shutdown complete.");
     return (int)(ERROR_CODE::ERROR_NONE);
 }
