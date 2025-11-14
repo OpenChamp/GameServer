@@ -168,24 +168,24 @@ void GameServer::send_packet(PACKET_TYPE packet_type, ENetPeer* peer) {
 void GameServer::run() {
     LOG_INFO("Starting server main loop");
     
-    auto last_update = std::chrono::high_resolution_clock::now();
-    
     while (!shutdown_requested_) {
-        auto now = std::chrono::high_resolution_clock::now();
-        auto elapsed = std::chrono::duration<float>(now - last_update);
-        float delta_time = elapsed.count();
-        last_update = now;
+        if(!frame_timer_.is_frame()) {
+            // Wait for the next tick!
+            continue;
+        }
+
+        LOG_INFO("FRAME");
         
-        // Service network with timeout
-        service_network(100);
+        // Service network
+        service_network(0);
         
         // Update ECS systems
         if (map_entity_) {
             // Update minion spawner
-            minion_spawner_->update(entity_manager_, delta_time, map_entity_, current_state_);
+            minion_spawner_->update(entity_manager_, frame_timer_.frame_duration_in_ms(), map_entity_, current_state_);
             
             // Update minion movement
-            minion_movement_->update(entity_manager_, delta_time, map_entity_);
+            minion_movement_->update(entity_manager_, frame_timer_.frame_duration_in_ms(), map_entity_);
             
             // Update minion damage and deaths
             auto dead_minions = minion_damage_->update(entity_manager_);
