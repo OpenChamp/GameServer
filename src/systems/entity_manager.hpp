@@ -8,6 +8,7 @@
 #include <stdexcept>
 
 #include "components/component.hpp"
+#include <systems/data_loader.hpp>
 
 /**
  * Represents a unique entity ID in the ECS system.
@@ -112,7 +113,13 @@ private:
  */
 class EntityManager {
 public:
-    EntityManager() : next_entity_id_(1) {}
+    EntityManager() : next_entity_id_(1) {
+        // TODO probably use system independent path separator - ploinky 14/11/2025
+        for(std::string file_name : DataLoader::list_files_from_directory("data/entities", ".xml")) {
+            EntityTemplate entity_template = DataLoader::load_entity_template(file_name);
+            entity_template_cache.emplace(entity_template.id, entity_template);
+        }
+    }
     
     /**
      * Create a new entity.
@@ -122,6 +129,23 @@ public:
         EntityID id = next_entity_id_++;
         auto [it, inserted] = entities_.emplace(id, Entity(id));
         return it->second;
+    }
+    
+    Entity& create_entity_from_template(std::string entity_type_id) {
+        Entity& new_entity = create_entity();
+
+        auto map_it = entity_template_cache.find(entity_type_id);
+        if(map_it == entity_template_cache.end()) {
+            LOG_ERROR("No entity template found for type %s", entity_type_id.c_str());
+            return new_entity;
+        }
+
+        for(auto comp : map_it->second.component_templates) {
+            std::unique_ptr<Component> comp_copy = comp->clone();
+            new_entity.add_component(std::move(comp_copy));
+        }
+
+        return new_entity;
     }
     
     /**
@@ -202,4 +226,7 @@ public:
 private:
     std::unordered_map<EntityID, Entity> entities_;
     EntityID next_entity_id_;
+
+    // caches entity templates by their entity type (for cloning)
+    std::map<std::string, EntityTemplate> entity_template_cache;
 };

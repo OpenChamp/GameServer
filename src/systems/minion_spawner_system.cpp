@@ -5,6 +5,7 @@
 #include "components/stats.hpp"
 #include "components/game_state.hpp"
 #include <log.hpp>
+#include <systems/data_loader.hpp>
 
 MinionSpawnerSystem::MinionSpawnerSystem()
     : spawn_timer_(0.0f)
@@ -36,25 +37,15 @@ void MinionSpawnerSystem::update(EntityManager& entity_manager, float delta_time
         spawn_timer_ = 0.0f;
         
         // Create minion entity
-        Entity& minion = entity_manager.create_entity();
+        Entity& minion = entity_manager.create_entity_from_template("minion");
         
         // Set spawn position at current spawnpoint
         Vec3 spawn_pos = navmesh->spawnpoints[spawn_spawnpoint_index_];
         
         // Add Movement component
-        auto movement = std::make_unique<Movement>();
+        auto movement = minion.get_component<Movement>();
         movement->position = spawn_pos;
-        movement->velocity = Vec3(0.0f, 0.0f, 0.0f);
-        movement->move_speed = 10.0f;  // Units per second
         movement->is_moving = true;
-        minion.add_component(std::move(movement));
-        
-        // Add Stats component
-        auto stats = std::make_unique<Stats>();
-        stats->max_health = 100.0f;
-        stats->health = 100.0f;
-        stats->move_speed = 10.0f;
-        minion.add_component(std::move(stats));
         
         // Add Minion component
         auto minion_comp = std::make_unique<Minion>();
