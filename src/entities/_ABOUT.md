@@ -1,0 +1,2 @@
+# Entities
+Entities work as containers, holding multiple components to be acted upon by a system. Entites are innately non-functional and any functionality directly in an entity needs to be unique from any existing systems and server a niche.

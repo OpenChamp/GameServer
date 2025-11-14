@@ -1,0 +1,2 @@
+# Systems Directory
+Systems are the functional components of our application. Systems should not contain variables outside of function scopes, and all system functions (except logging) should return some value
