@@ -13,8 +13,6 @@ enum class PACKET_TYPE : uint8_t {
     SPAWN_MAP,
     SPAWN_ENTITY,
     PLAYER_DISCONNECT,
-    HEARTBEAT_PING,
-    HEARTBEAT_PONG,
     MINION_STATE,  // Contains all active minion positions and states
 };
 
@@ -33,9 +31,6 @@ public:
         switch (type) {
             case PACKET_TYPE::PLAYER_READY:
                 return 2;  // type (1) + ready_status (1)
-            case PACKET_TYPE::HEARTBEAT_PING:
-            case PACKET_TYPE::HEARTBEAT_PONG:
-                return 1;  // type only
             case PACKET_TYPE::MINION_STATE:
                 return 5;  // type (1) + minion_count (4)
             case PACKET_TYPE::GAME_START:

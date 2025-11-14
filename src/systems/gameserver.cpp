@@ -122,11 +122,6 @@ bool GameServer::service_network(unsigned int timeout_ms) {
                             handle_player_ready_packet(event, event.packet->data, event.packet->dataLength);
                             break;
                             
-                        case PACKET_TYPE::HEARTBEAT_PING:
-                            // Send pong back
-                            LOG_DEBUG("Received heartbeat ping from %s", client_id_ptr->c_str());
-                            break;
-                            
                         default:
                             LOG_WARN("Unknown packet type: %d", (int)(packet_type));
                             break;
@@ -155,6 +150,19 @@ bool GameServer::service_network(unsigned int timeout_ms) {
     }
     
     return true;
+}
+
+void GameServer::send_packet(PACKET_TYPE packet_type, ENetPeer* peer) {
+    uint8_t packet_data[1];
+    packet_data[0] = static_cast<uint8_t>(packet_type);
+    
+    ENetPacket* packet = enet_packet_create(packet_data, sizeof(packet_data), ENET_PACKET_FLAG_RELIABLE);
+    if (packet) {
+        enet_peer_send(peer, 0, packet);
+        LOG_DEBUG("Sent packet type %d to peer", (int)packet_type);
+    } else {
+        LOG_ERROR("Failed to create packet for type %d", (int)packet_type);
+    }
 }
 
 void GameServer::run() {

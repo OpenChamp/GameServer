@@ -158,6 +158,13 @@ private:
      * Rate-limited to avoid excessive network traffic.
      */
     void broadcast_minion_states();
+
+    /**
+     * Send a packet of specified type to a peer.
+     * @param packet_type Type of packet to send
+     * @param peer ENet peer to send the packet to
+     */
+    void send_packet(PACKET_TYPE packet_type, ENetPeer* peer);
     
     /**
      * Validate state transition rules.
