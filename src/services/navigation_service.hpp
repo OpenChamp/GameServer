@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <vector>
+#include <optional>
 
 #include <systems/math.hpp>
 
@@ -33,17 +34,9 @@ public:
     
     /**
      * Load the result from the front of the queue if such a result is available.
-     * Call this like
-     * 
-     * PathResult result;
-     * if(navigation_service->GetResult(&result)) {
-     *  // do things with result
-     * }
-     * 
-     * @param resultPtr OUT variable, will contain the result if this function returns true
-     * @return True if a result could be retrieved and is now stored in `resultPtr`, false otherwise ( -> do not try to do things with resultPtr...)
+     * @return A path result if one is available
      */
-    bool GetResult(PathResult* resultPtr);
+    std::optional<PathResult> GetResult();
 
 private:
     struct NavServiceBackend;

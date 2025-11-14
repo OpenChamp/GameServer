@@ -122,11 +122,11 @@ bool NavigationService::MakeRequest(PathRequest request) {
     return true;
 }
     
-bool NavigationService::GetResult(PathResult* resultPtr) {
+std::optional<PathResult> NavigationService::GetResult() {
     std::unique_lock lock(impl_->mtx, std::defer_lock);
     
     if(!lock.try_lock()) {
-        return false;
+        return std::nullopt;
     }
     
     // =================================================================
@@ -134,10 +134,10 @@ bool NavigationService::GetResult(PathResult* resultPtr) {
     // =================================================================
     if(impl_->results.empty()) {
         lock.unlock();
-        return false;
+        return std::nullopt;
     }
 
-    *resultPtr = impl_->results.front();
+    PathResult result = impl_->results.front();
     impl_->results.pop();
 
     lock.unlock();
@@ -145,5 +145,5 @@ bool NavigationService::GetResult(PathResult* resultPtr) {
     // the lock is unlocked, take your time
     // =================================================================
 
-    return true;
+    return std::make_optional(result);
 }
