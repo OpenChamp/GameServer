@@ -71,6 +71,7 @@ set(GAMESERVER_HEADERS
 	src/components/map.hpp
 	src/components/navmesh.hpp
 	src/components/minion.hpp
+	src/systems/data_loader.cpp
 	src/systems/map_system.hpp
 	src/systems/minion_spawner_system.hpp
 	src/systems/minion_movement_system.hpp
@@ -103,7 +104,11 @@ endif()
 enable_testing()
 
 # Add test executable
-add_executable(gameserver_tests tests/tests.cpp)
+add_executable(gameserver_tests
+	tests/tests.cpp
+	src/systems/data_loader.cpp
+	src/libs/pugixml.cpp
+)
 
 target_include_directories(gameserver_tests PRIVATE 
 	${CMAKE_SOURCE_DIR}/src

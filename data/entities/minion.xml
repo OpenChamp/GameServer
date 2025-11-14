@@ -4,6 +4,7 @@
     xmlns="https://open-champ.com/mySchema"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="https://open-champ.com/mySchema _entity.xsd"
+    id="minion"
 >
     <movement
         move_speed="10.0"

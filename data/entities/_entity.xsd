@@ -52,6 +52,8 @@
                 </xs:complexType>
             </xs:element>
         </xs:sequence>
+        
+        <xs:attribute name="id" type="xs:string" use="required"/>
     </xs:complexType>
 </xs:element>
 

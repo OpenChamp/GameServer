@@ -37,7 +37,7 @@ void MinionSpawnerSystem::update(EntityManager& entity_manager, float delta_time
         spawn_timer_ = 0.0f;
         
         // Create minion entity
-        Entity& minion = DataLoader::create_entity_from_data(&entity_manager, "entities/minion");
+        Entity& minion = entity_manager.create_entity_from_template("minion");
         
         // Set spawn position at current spawnpoint
         Vec3 spawn_pos = navmesh->spawnpoints[spawn_spawnpoint_index_];
