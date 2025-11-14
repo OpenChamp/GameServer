@@ -1,0 +1,8 @@
+#pragma once
+
+enum class ERROR_CODE {
+    ERROR_NONE,
+    ERROR_ENET_INIT_FAILED,
+    ERROR_ENET_CREATION_FAILED,
+    ERROR_ENET_JOIN_FAILED,
+};

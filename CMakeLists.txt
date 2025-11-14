@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(openchamp_gameserver)
+project(gameserver VERSION 0.0.01 LANGUAGES CXX)
+
+# Set C++ standard
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Detect platform and architecture
 message(STATUS "CMake system name: ${CMAKE_SYSTEM_NAME}")
@@ -41,4 +45,80 @@ else()
 	endif()
 endif()
 
-add_executable(gameserver src/main.cpp)
+# Source files for gameserver executable
+set(GAMESERVER_SOURCES
+	src/main.cpp
+	src/systems/gameserver.cpp
+	src/systems/map_system.cpp
+	src/systems/minion_serializer.cpp
+	src/systems/minion_spawner_system.cpp
+	src/systems/minion_movement_system.cpp
+	src/systems/minion_damage_system.cpp
+)
+
+# Header files (for IDE organization)
+set(GAMESERVER_HEADERS
+	src/systems/gameserver.hpp
+	src/components/game_state.hpp
+	src/entities/player.hpp
+	src/systems/packet_validator.hpp
+	src/components/errors.hpp
+	src/systems/entity_manager.hpp
+	src/components/component.hpp
+	src/components/movement.hpp
+	src/components/stats.hpp
+	src/systems/math.hpp
+	src/components/map.hpp
+	src/components/navmesh.hpp
+	src/components/minion.hpp
+	src/systems/map_system.hpp
+	src/systems/minion_spawner_system.hpp
+	src/systems/minion_movement_system.hpp
+	src/systems/minion_damage_system.hpp
+)
+
+add_executable(gameserver ${GAMESERVER_SOURCES} ${GAMESERVER_HEADERS})
+
+# Include directories
+target_include_directories(gameserver PRIVATE 
+	${CMAKE_SOURCE_DIR}/src
+	${CMAKE_SOURCE_DIR}/src/libs
+	${CMAKE_SOURCE_DIR}/src/components
+	${CMAKE_SOURCE_DIR}/src/systems
+	${CMAKE_SOURCE_DIR}/src/entities
+)
+
+# Set warning levels
+if (MSVC)
+	target_compile_options(gameserver PRIVATE /W4)
+else()
+	target_compile_options(gameserver PRIVATE -Wall -Wextra -pedantic)
+endif()
+
+# Enable testing
+enable_testing()
+
+# Add test executable
+add_executable(gameserver_tests tests/tests.cpp)
+
+target_include_directories(gameserver_tests PRIVATE 
+	${CMAKE_SOURCE_DIR}/src
+	${CMAKE_SOURCE_DIR}/src/libs
+	${CMAKE_SOURCE_DIR}/src/components
+	${CMAKE_SOURCE_DIR}/src/systems
+	${CMAKE_SOURCE_DIR}/src/entities
+)
+
+if (MSVC)
+	target_compile_options(gameserver_tests PRIVATE /W4)
+else()
+	target_compile_options(gameserver_tests PRIVATE -Wall -Wextra -pedantic)
+endif()
+
+# Set test output directory
+set_target_properties(gameserver_tests PROPERTIES
+	RUNTIME_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
+)
+
+# Register the test
+add_test(NAME GameServerTests COMMAND gameserver_tests)

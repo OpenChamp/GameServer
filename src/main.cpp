@@ -1,116 +1,91 @@
 #define ENET_IMPLEMENTATION
-#define _WINSOCK_DEPRECATED_NO_WARNINGS
 /* Standard Libraries */
 #include <stdio.h>
+#include <csignal>
 #include <string>
-#include <chrono>
-#include <thread>
-#include <vector>
+#include <stdexcept>
 
-/* Third-Party Libraries */
-#include "vendor/enet.h"
+/* Project Headers */
+#include "gameserver.hpp"
 
+// === Configuration Constants ===
+constexpr int DEFAULT_PORT = 7000;
+constexpr int DEFAULT_MAX_CLIENTS = 1;
+constexpr int MAX_PORT = 65535;
+constexpr int MIN_PORT = 1;
+constexpr int MAX_CLIENTS_LIMIT = 1000;
 
-enum class ERROR_CODE {
-    ERROR_NONE,
-    ERROR_ENET_INIT_FAILED,
-    ERROR_ENET_CREATION_FAILED,
-    ERROR_ENET_JOIN_FAILED,
-};
+// Global pointer to server instance for signal handler
+static GameServer* g_server_instance = nullptr;
 
-enum class GAME_STATE {
-    PREGAME,
-    ONGOING,
-    PAUSED,
-    ENDING,
-};
-
-struct Player {
-    std::string client_id;
-    bool is_ready;
-};
-std::vector<Player> players;
-
-bool lobby_check_ready() {
-    // Check if all players are ready
-    for (const auto& player : players) {
-        if (!player.is_ready) {
-            return false;
-        }
+// Signal handler for graceful shutdown
+void signal_handler(int signal) {
+    if (signal == SIGINT && g_server_instance) {
+        printf("\nShutdown signal received. Cleaning up...\n");
+        g_server_instance->request_shutdown();
     }
-    return true;
 }
+
 int main() {
-    printf("Starting Server\n");
-    GAME_STATE state = GAME_STATE::PREGAME;
-    // Initialize ENet
-    if (enet_initialize() != 0) {
-        fprintf(stderr, "An error occurred while initializing ENet.\n");
-        return (int)ERROR_CODE::ERROR_ENET_INIT_FAILED;
-    }
-    ENetAddress network_connection = {0};
-    // Read .env file if exists or import from system environment variables
-    const int env_port = std::stoi(std::getenv("SERVER_PORT") == nullptr ? "0" : std::getenv("SERVER_PORT"));
-    const char* players_string = std::getenv("PLAYERS");
-// TODO: Implement JSON parsing - cmkrist 13/11/2025
-    // Port Config
-    if (env_port != 0) {
-        printf("Using port from environment: %d\n", env_port);
-        network_connection.port = env_port;
-    } else {
-        printf("No port specified in environment, using default 7000\n");
-        network_connection.port = 7000;
-    }
-    // Players Config
-// TODO: Find a way to pass players to the ENet host creation - cmkrist 13/11/2025
-    #define MAX_CLIENTS 1
-    // Host all (Managed by ContainerService)
-    network_connection.host = ENET_HOST_ANY;
-
-    // Initialize ENet server host
-    ENetHost* enet_server = enet_host_create(&network_connection, MAX_CLIENTS, 2, 0, 0);
-    if (enet_server == nullptr) {
-        fprintf(stderr, "An error occurred while trying to create an ENet server host.\n");
-        enet_deinitialize();
-        return (int)ERROR_CODE::ERROR_ENET_CREATION_FAILED;
-    }
-    printf("Server started on port: %d\n", network_connection.port);
-
-    // Main server loop
-    ENetEvent event;
-    while (true) {
-        while (enet_host_service(enet_server, &event, 1000) > 0) {
-            switch (event.type) {
-                case ENET_EVENT_TYPE_CONNECT:
-                    printf("A new client connected from %s:%u.\n",
-                           event.peer->address.host,
-                           event.peer->address.port);
-                    if (state == GAME_STATE::PREGAME && lobby_check_ready()) {
-                        // Start the game
-                        state = GAME_STATE::ONGOING;
-                        printf("All players ready. Starting the game!\n");
-                    } else {
-                        printf("Waiting for all players to be ready...\n");
-                    }
-                    break;
-                case ENET_EVENT_TYPE_RECEIVE:
-                    printf("A packet of length %u was received from %s on channel %u.\n",
-                           (unsigned int)event.packet->dataLength,
-                           (char*)event.peer->data,
-                           (unsigned int)event.channelID);
-                    enet_packet_destroy(event.packet);
-                    break;
-                case ENET_EVENT_TYPE_DISCONNECT:
-                    printf("%s disconnected.\n", (char*)event.peer->data);
-                    event.peer->data = NULL;
-                    break;
-                default:
-                    break;
+    printf("OpenChamp GameServer Starting\n");
+    printf("==============================\n");
+    
+    // Parse port from environment
+    int env_port = DEFAULT_PORT;
+    const char* port_env = std::getenv("SERVER_PORT");
+    if (port_env != nullptr) {
+        try {
+            env_port = std::stoi(port_env);
+            if (env_port <= MIN_PORT || env_port > MAX_PORT) {
+                fprintf(stderr, "Invalid port number: %s. Using default %d\n", port_env, DEFAULT_PORT);
+                env_port = DEFAULT_PORT;
+            } else {
+                printf("Using port from environment: %d\n", env_port);
             }
+        } catch (const std::exception& e) {
+            fprintf(stderr, "Failed to parse SERVER_PORT: %s. Using default %d\n", e.what(), DEFAULT_PORT);
+            env_port = DEFAULT_PORT;
         }
+    } else {
+        printf("No port specified in environment, using default %d\n", DEFAULT_PORT);
     }
-    enet_host_destroy(enet_server);
-    enet_deinitialize();
-
-    return (int)ERROR_CODE::ERROR_NONE;
+    
+    // Parse max clients from environment
+    int max_clients = DEFAULT_MAX_CLIENTS;
+    const char* clients_env = std::getenv("MAX_CLIENTS");
+    if (clients_env != nullptr) {
+        try {
+            max_clients = std::stoi(clients_env);
+            if (max_clients <= 0 || max_clients > MAX_CLIENTS_LIMIT) {
+                fprintf(stderr, "Invalid MAX_CLIENTS: %s. Using default %d\n", clients_env, DEFAULT_MAX_CLIENTS);
+                max_clients = DEFAULT_MAX_CLIENTS;
+            } else {
+                printf("Using MAX_CLIENTS from environment: %d\n", max_clients);
+            }
+        } catch (const std::exception& e) {
+            fprintf(stderr, "Failed to parse MAX_CLIENTS: %s. Using default %d\n", e.what(), DEFAULT_MAX_CLIENTS);
+            max_clients = DEFAULT_MAX_CLIENTS;
+        }
+    } else {
+        printf("No MAX_CLIENTS specified in environment, using default %d\n", DEFAULT_MAX_CLIENTS);
+    }
+    
+    // Create and initialize server
+    GameServer server(env_port, max_clients);
+    
+    ERROR_CODE init_result = server.initialize();
+    if (init_result != ERROR_CODE::ERROR_NONE) {
+        fprintf(stderr, "Failed to initialize server: %d\n", (int)(init_result));
+        return (int)(init_result);
+    }
+    
+    // Register signal handler for graceful shutdown
+    g_server_instance = &server;
+    std::signal(SIGINT, signal_handler);
+    
+    // Run the server main loop
+    server.run();
+    // Cleanup happens automatically in GameServer destructor
+    printf("Server shutdown complete.\n");
+    return (int)(ERROR_CODE::ERROR_NONE);
 }
