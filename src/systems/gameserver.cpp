@@ -174,8 +174,6 @@ void GameServer::run() {
             continue;
         }
 
-        LOG_INFO("FRAME");
-        
         // Service network
         service_network(0);
         
