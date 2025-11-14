@@ -77,7 +77,11 @@ set(GAMESERVER_HEADERS
 	src/systems/minion_damage_system.hpp
 )
 
-add_executable(gameserver ${GAMESERVER_SOURCES} ${GAMESERVER_HEADERS})
+set(LIBRARY_SOURCES
+	src/libs/pugixml.cpp
+)
+
+add_executable(gameserver ${GAMESERVER_SOURCES} ${GAMESERVER_HEADERS} ${LIBRARY_SOURCES})
 
 # Include directories
 target_include_directories(gameserver PRIVATE 
