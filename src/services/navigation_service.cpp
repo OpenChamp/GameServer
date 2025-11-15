@@ -9,8 +9,11 @@
 #include <libs/log.hpp>
 #include <libs/frame_timer.h>
 
+#include <components/map.hpp>
+
 struct NavigationService::NavServiceBackend {
     std::thread worker;
+    Map map;
     std::atomic<bool> running{true};
     std::queue<PathRequest> requests;
     std::queue<PathResult> results;
@@ -96,8 +99,9 @@ struct NavigationService::NavServiceBackend {
 };
 
 
-NavigationService::NavigationService() {
+NavigationService::NavigationService(Map map_object) {
     impl_ = std::make_unique<NavServiceBackend>();
+    impl_->map = std::move(map_object);
 }
 
 NavigationService::~NavigationService() = default;

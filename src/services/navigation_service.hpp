@@ -4,6 +4,7 @@
 #include <vector>
 #include <optional>
 
+#include <components/map.hpp>
 #include <systems/math.hpp>
 
 class PathRequest {
@@ -22,7 +23,7 @@ public:
 
 class NavigationService {
 public:
-    NavigationService();
+    NavigationService(Map map_object);
     ~NavigationService();
 
     /**

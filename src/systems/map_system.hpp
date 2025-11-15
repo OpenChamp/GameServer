@@ -3,11 +3,13 @@
 #include "entity_manager.hpp"
 #include "math.hpp"
 #include "packet_validator.hpp"
+#include <optional>
 #include <string>
 #include <vector>
 #include <cstring>
 #include <enet.h>
 
+#include <components/map.hpp>
 /**
  * System to load and manage game maps from Godot tscn files.
  * Parses navmesh data and provides it to clients.
@@ -31,7 +33,7 @@ public:
      * @param entity_manager Reference to the entity manager
      * @return Pointer to the created map entity, or nullptr if loading failed
      */
-    static EntityID load_map(const std::string& map_name, const std::string& file_path, EntityManager& entity_manager);
+    static std::optional<Map> load_map(const std::optional<std::string>& file_path);
 
     /**
      * Serialize map data to an ENet packet.
@@ -58,4 +60,5 @@ private:
     static NavMeshData parse_navmesh_from_tscn(const std::string& file_content);
     static std::vector<Vec2> parse_vertices_to_2D(const std::string& vertices_str);
     static std::vector<std::vector<uint32_t>> parse_polygons(const std::string& polygons_str);
+    static Vec2 calculate_size_from_vertices(const std::vector<Vec2>& vertices);
 };

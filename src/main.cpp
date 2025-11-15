@@ -12,13 +12,33 @@
 constexpr int DEFAULT_PORT = 7000;
 constexpr int DEFAULT_MAX_CLIENTS = 1;
 constexpr int MAX_PORT = 65535;
-constexpr int MIN_PORT = 1;
+constexpr int MIN_PORT = 7000;
 constexpr int MAX_CLIENTS_LIMIT = 1000;
 
 // Global pointer to server instance for signal handler
 static GameServer* g_server_instance = nullptr;
 
 // Signal handler for graceful shutdown
+
+// === Helper Functions === //
+static std::string get_map_path_from_env() {
+    // Static Path
+    const char* map_path_env = std::getenv("MAP_FILE_PATH");
+    if (map_path_env != nullptr) {
+        std::string map_path(map_path_env);
+        LOG_INFO("Using map file path from environment: %s", map_path.c_str());
+        return map_path;
+    }
+    // Map Name
+    const char* map_name_env = std::getenv("MAP_NAME");
+    if (map_name_env != nullptr) {
+        LOG_INFO("Using map name from environment: %s", map_name_env);
+        return std::string(map_name_env);
+    }
+    // Default
+    LOG_INFO("No map file path or name specified in environment, using default map");
+    return "";
+}
 void signal_handler(int signal) {
     if (signal == SIGINT && g_server_instance) {
         LOG_INFO("Shutdown signal received. Cleaning up...");
@@ -26,6 +46,7 @@ void signal_handler(int signal) {
     }
 }
 
+// === Main Entry Point === //
 int main() {
     LOG_INFO("OpenChamp GameServer Starting");
     LOG_INFO("==============================");
@@ -71,7 +92,7 @@ int main() {
     }
     
     // Create and initialize server
-    GameServer server(env_port, max_clients);
+    GameServer server(env_port, max_clients, get_map_path_from_env());
     
     ERROR_CODE init_result = server.initialize();
     if (init_result != ERROR_CODE::ERROR_NONE) {

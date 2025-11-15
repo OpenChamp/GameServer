@@ -18,8 +18,8 @@ struct Map : public Component {
     std::vector<std::vector<uint32_t>> polygons;
     
     // Grid size and offset
-    Vec2 map_size = Vec2(0.0f, 0.0f); //width, height
-    Vec2 map_offset = Vec2(0.0f, 0.0f); // 1/2 width, 1/2 height - cmkrist 15/11/2025
+    Vec2 size = Vec2(0.0f, 0.0f); //width, height
+    Vec2 offset = Vec2(0.0f, 0.0f); // 1/2 width, 1/2 height - cmkrist 15/11/2025
     
     COMPONENT_TYPE_ID(Map, 2005)
 };

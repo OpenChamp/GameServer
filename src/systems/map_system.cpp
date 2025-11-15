@@ -4,23 +4,45 @@
 #include <log.hpp>
 #include <filesystem>
 #include <fstream>
+#include <optional>
 #include <sstream>
 #include <cctype>
 #include <algorithm>
 #include <vector>
 
-EntityID MapSystem::load_map(const std::string& map_name, const std::string& file_path, EntityManager& entity_manager) {
-    std::string actual_file_path = file_path;
-    std::string actual_map_name = map_name;
-    
-    // If no path provided or file doesn't exist, scan for .tscn files in current directory
-    if (actual_file_path.empty() || !std::filesystem::exists(actual_file_path)) {
-        if (!actual_file_path.empty()) {
-            LOG_WARN("Map file not found: %s. Scanning current directory for .tscn files...", actual_file_path.c_str());
+
+
+std::optional<Map> MapSystem::load_map(const std::optional<std::string>& file_path) {
+    std::string default_map_dir = "./data/maps/"; // STATIC -- cmkrist 15/11/2025
+    // Create initial return variables
+    std::optional<Map> loaded_map;
+    std::string actual_file_path;
+    // Check for existing file path
+    if (file_path && !file_path->empty()) {
+        // Dedicated Path
+        if (file_path->find(".tscn") != std::string::npos) {
+            LOG_INFO("Loading map from specified file path: %s", file_path->c_str());
+            actual_file_path = *file_path;
+            if (!std::filesystem::exists(actual_file_path)) {
+                LOG_ERROR("Specified map file does not exist: %s", actual_file_path.c_str());
+                actual_file_path.clear();
+            }
+        // Map Name
+        } else {
+            actual_file_path = default_map_dir + *file_path + ".tscn";
+            if (std::filesystem::exists(actual_file_path)) {
+                LOG_INFO("Loading map from specified map name: %s", file_path->c_str());
+            } else {
+                actual_file_path.clear();
+                LOG_ERROR("Map file for specified map name does not exist: %s", actual_file_path.c_str());
+            }
         }
-        
+    }
+    // ScanDir if no map set
+    if (actual_file_path.empty()) {
+        // Check for valid file paths
         std::vector<std::string> tscn_files;
-        for (const auto& entry : std::filesystem::directory_iterator(".")) {
+        for (const auto& entry : std::filesystem::directory_iterator(default_map_dir)) {
             if (entry.is_regular_file() && entry.path().extension() == ".tscn") {
                 tscn_files.push_back(entry.path().filename().string());
             }
@@ -28,19 +50,17 @@ EntityID MapSystem::load_map(const std::string& map_name, const std::string& fil
         
         if (tscn_files.empty()) {
             LOG_ERROR("No .tscn files found in current directory. Cannot load map.");
-            return nullptr;
+            return std::nullopt;
         }
-        
-        actual_file_path = tscn_files[0];
-        actual_map_name = std::filesystem::path(actual_file_path).stem().string();
+
+        actual_file_path = default_map_dir + tscn_files[0];
         LOG_INFO("Found .tscn file: %s", actual_file_path.c_str());
     }
-    
     // Read file
     std::ifstream file(actual_file_path);
     if (!file.is_open()) {
         LOG_ERROR("Failed to open map file: %s", actual_file_path.c_str());
-        return NULL;
+        return std::nullopt;
     }
     
     std::stringstream buffer;
@@ -52,29 +72,24 @@ EntityID MapSystem::load_map(const std::string& map_name, const std::string& fil
     NavMeshData navmesh_data = parse_navmesh_from_tscn(file_content);
     if (navmesh_data.vertices.empty() || navmesh_data.polygons.empty()) {
         LOG_ERROR("Failed to parse navmesh data from map file: %s", actual_file_path.c_str());
-        return NULL;
+        return std::nullopt;
     }
     
-    // Create map entity
-    Entity& map_entity = entity_manager.create_entity();
-    // FIX: Cleaning up from dirty pool, but should probably handle this differently -- cmkrist 15/11/2025
-    entity_manager.mark_entity_clean(map_entity.get_id());
-    
     // Add Map component
-    auto map = std::make_unique<Map>();
-    map->name = actual_map_name;
-    map->vertices = navmesh_data.vertices;
-    map->polygons = navmesh_data.polygons;
+    Map map;
+    int final_slash_index = actual_file_path.find_last_of("/\\");
+    // Get name from file
+    map.name = actual_file_path.substr(final_slash_index + 1, actual_file_path.find_last_of('.') - final_slash_index - 1);
+    map.vertices = navmesh_data.vertices;
+    map.polygons = navmesh_data.polygons;
     // Get 2d size and offset
-    map->size = calculate_size_from_vertices(navmesh_data.vertices);
-    map->offset = map->size / 2.0f;
-
-    map_entity.add_component(std::move(map));
+    map.size = MapSystem::calculate_size_from_vertices(navmesh_data.vertices);
+    map.offset = map.size / 2.0f;
 
     LOG_INFO("Loaded map '%s' with %zu vertices and %zu polygons",
-             actual_map_name.c_str(), navmesh_data.vertices.size(), navmesh_data.polygons.size());
-    
-    return map_entity.get_id();
+             map.name.c_str(), navmesh_data.vertices.size(), navmesh_data.polygons.size());
+
+    return std::optional<Map>(map);
 }
 
 MapSystem::NavMeshData MapSystem::parse_navmesh_from_tscn(const std::string& file_content) {
@@ -282,7 +297,7 @@ ENetPacket* MapSystem::serialize_map(Entity* map_entity) {
     return packet;
 }
 
-Vec2 calculate_size_from_vertices(const std::vector<Vec2>& vertices) {
+Vec2 MapSystem::calculate_size_from_vertices(const std::vector<Vec2>& vertices) {
     if (vertices.empty()) {
         return Vec2(0.0f, 0.0f);
     }
