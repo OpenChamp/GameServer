@@ -48,14 +48,16 @@ endif()
 # Source files for gameserver executable
 set(GAMESERVER_SOURCES
 	src/main.cpp
+	# Services
 	src/services/navigation_service.cpp
+	# Systems
+	src/systems/combat_system.cpp
 	src/systems/data_loader.cpp
 	src/systems/gameserver.cpp
 	src/systems/map_system.cpp
-	src/systems/minion_serializer.cpp
-	src/systems/minion_spawner_system.cpp
-	src/systems/minion_movement_system.cpp
-	src/systems/minion_damage_system.cpp
+	src/systems/combat_system.cpp
+	src/systems/movement_system.cpp
+	src/systems/serialization_system.cpp
 )
 
 # Header files (for IDE organization)
@@ -72,13 +74,12 @@ set(GAMESERVER_HEADERS
 	src/systems/math.hpp
 	src/components/map.hpp
 	src/components/navmesh.hpp
-	src/components/minion.hpp
 	src/services/navigation_service.hpp
 	src/systems/data_loader.hpp
 	src/systems/map_system.hpp
-	src/systems/minion_spawner_system.hpp
-	src/systems/minion_movement_system.hpp
-	src/systems/minion_damage_system.hpp
+	src/systems/combat_system.hpp
+	src/systems/movement_system.hpp
+	src/systems/serialization_system.hpp
 )
 
 set(LIBRARY_SOURCES
