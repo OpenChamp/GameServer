@@ -19,9 +19,6 @@ struct Stats : public Component {
     float max_mana = 0.0f;
     float mana = 0.0f;
     float move_speed = 0.0f;
-    float required_exp = 1.0f;
-    float addition_exp_per_level = 0.0f;
-    float current_exp = 0.0f;
     int level = 1;
     
     // === Offensive Stats ===

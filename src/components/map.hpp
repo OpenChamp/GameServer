@@ -13,11 +13,13 @@ struct Map : public Component {
     // Map name (e.g., "Konda")
     std::string name = "DEBUG_MAP";
     
-    // Navmesh vertices
-    std::vector<Vec3> vertices;
-    
-    // Navmesh polygons (triangle indices)
+    // Navmesh
+    std::vector<Vec2> vertices;
     std::vector<std::vector<uint32_t>> polygons;
+    
+    // Grid size and offset
+    Vec2 map_size = Vec2(0.0f, 0.0f); //width, height
+    Vec2 map_offset = Vec2(0.0f, 0.0f); // 1/2 width, 1/2 height - cmkrist 15/11/2025
     
     COMPONENT_TYPE_ID(Map, 2005)
 };
