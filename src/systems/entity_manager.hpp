@@ -4,8 +4,6 @@
 #include <memory>
 #include <unordered_map>
 #include <vector>
-#include <typeinfo>
-#include <stdexcept>
 
 #include "components/component.hpp"
 #include <systems/data_loader.hpp>
@@ -128,12 +126,16 @@ public:
     Entity& create_entity() {
         EntityID id = next_entity_id_++;
         auto [it, inserted] = entities_.emplace(id, Entity(id));
+        if (!inserted) {
+            LOG_ERROR("Entity ID collision on creation: %u", id);
+        }
+        dirty_entities.push_back(id); // Dirty entities for non-pooled entities -- cmkrist 15/11/2025
         return it->second;
     }
     
     Entity& create_entity_from_template(std::string entity_type_id) {
         Entity& new_entity = create_entity();
-
+        // Apply Template
         auto map_it = entity_template_cache.find(entity_type_id);
         if(map_it == entity_template_cache.end()) {
             LOG_ERROR("No entity template found for type %s", entity_type_id.c_str());
@@ -144,7 +146,9 @@ public:
             std::unique_ptr<Component> comp_copy = comp->clone();
             new_entity.add_component(std::move(comp_copy));
         }
-
+        // Register in cache
+        entity_pools_[entity_type_id].push_back(new_entity.get_id());
+        dirty_entities.erase(std::remove(dirty_entities.begin(), dirty_entities.end(), new_entity.get_id()), dirty_entities.end()); // remove from dirty entities -- cmkrist 15/11/2025
         return new_entity;
     }
     
@@ -180,6 +184,12 @@ public:
      * @return true if entity was destroyed, false if it didn't exist
      */
     bool destroy_entity(EntityID id) {
+        // Remove from all possible pools
+        for (auto& [template_id, pool] : entity_pools_) {
+            pool.erase(std::remove(pool.begin(), pool.end(), id), pool.end());
+        }
+        dirty_entities.erase(std::remove(dirty_entities.begin(), dirty_entities.end(), id), dirty_entities.end());
+        // Return final destruction
         return entities_.erase(id) > 0;
     }
     
@@ -225,6 +235,8 @@ public:
 
 private:
     std::unordered_map<EntityID, Entity> entities_;
+    std::map<std::string, std::vector<EntityID>> entity_pools_; // TemplateID -> Entities with that template -- cmkrist 15/11/2025
+    std::vector<EntityID> dirty_entities; // Vector for entities not-added to pools -- cmkrist 15/11/2025
     EntityID next_entity_id_;
 
     // caches entity templates by their entity type (for cloning)
