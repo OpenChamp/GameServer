@@ -1,17 +1,25 @@
 #include "gameserver.hpp"
 #include "packet_validator.hpp"
+#include <optional>
 #include <log.hpp>
 #include <cstring>
 #include <algorithm>
 #include <cstdio>
 #include <chrono>
 
-GameServer::GameServer(int port, int max_clients)
+// Include Components for required data types (non-entity headers)
+#include <components/map.hpp>
+
+#include <services/navigation_service.hpp>
+
+GameServer::GameServer(int port, int max_clients, const std::string& map_path)
     : port_(port)
     , max_clients_(max_clients)
+    , map_path_(map_path)
     , enet_server_(nullptr)
     , shutdown_requested_(false)
     , current_state_(GAME_STATE::PREGAME)
+    , navigation_service_(nullptr)
     , last_minion_broadcast_(std::chrono::high_resolution_clock::now()) {
 }
 
@@ -67,15 +75,19 @@ ERROR_CODE GameServer::initialize() {
     
     LOG_INFO("Server initialized successfully on port %d", port_);
     
-    // Initialize ECS systems
-    map_entity_ = MapSystem::load_default_map(entity_manager_);
-    if (!map_entity_) {
+    // Initialize Map
+    std::optional<Map> map_opt = MapSystem::load_map(map_path_);
+    if (!map_opt) {
         LOG_ERROR("Failed to load map");
         return ERROR_CODE::ERROR_ENET_CREATION_FAILED;
     }
-    minion_spawner_ = std::make_unique<MinionSpawnerSystem>();
-    minion_movement_ = std::make_unique<MinionMovementSystem>();
-    minion_damage_ = std::make_unique<MinionDamageSystem>();
+
+    // Initialize Navigation
+    navigation_service_ = std::make_unique<NavigationService>(std::move(map_opt.value()));
+
+    // minion_spawner_ = std::make_unique<MinionSpawnerSystem>();
+    // minion_movement_ = std::make_unique<MinionMovementSystem>();
+    // minion_damage_ = std::make_unique<MinionDamageSystem>();
     
     return ERROR_CODE::ERROR_NONE;
 }
@@ -169,32 +181,18 @@ void GameServer::run() {
     LOG_INFO("Starting server main loop");
     
     while (!shutdown_requested_) {
+        // Service network events (non-blocking)
+        service_network(0);
+        // Frame timing
         if(!frame_timer_.is_frame()) {
-            // Wait for the next tick!
             continue;
         }
-
-        // Service network
-        service_network(0);
-        
         // Update ECS systems
         if (map_entity_) {
-            // Update minion spawner
-            minion_spawner_->update(entity_manager_, frame_timer_.frame_duration_in_ms(), map_entity_, current_state_);
             
-            // Update minion movement
-            minion_movement_->update(entity_manager_, frame_timer_.frame_duration_in_ms(), map_entity_);
-            
-            // Update minion damage and deaths
-            auto dead_minions = minion_damage_->update(entity_manager_);
-            
-            // Remove dead minions from the entity manager
-            for (EntityID dead_id : dead_minions) {
-                entity_manager_.destroy_entity(dead_id);
-            }
+
             
             // Broadcast minion states to all clients (rate-limited)
-            broadcast_minion_states();
         }
     }
     
@@ -372,38 +370,6 @@ void GameServer::on_client_disconnect(ENetEvent& event) {
 void GameServer::broadcast_player_list() {
     // TODO: Implement broadcasting player list to all connected clients
     // For now, this is a placeholder for future networking implementation
-}
-
-void GameServer::broadcast_minion_states() {
-    // Check if enough time has passed since last broadcast (rate limiting)
-    auto now = std::chrono::high_resolution_clock::now();
-    auto elapsed = std::chrono::duration<float>(now - last_minion_broadcast_);
-    if (elapsed.count() < MINION_BROADCAST_INTERVAL) {
-        return;  // Not enough time has passed
-    }
-    
-    // Update last broadcast time
-    last_minion_broadcast_ = now;
-    
-    // Only broadcast during ONGOING state
-    if (current_state_ != GAME_STATE::ONGOING) {
-        return;
-    }
-    
-    // Serialize minion states
-    ENetPacket* packet = MinionSerializer::serialize_minions(entity_manager_);
-    if (!packet) {
-        // No minions to broadcast yet
-        return;
-    }
-    
-    // Broadcast to all connected peers
-    if (enet_server_) {
-        enet_host_broadcast(enet_server_, 0, packet);
-        LOG_DEBUG("Broadcasted minion state packet to all clients");
-    } else {
-        enet_packet_destroy(packet);
-    }
 }
 
 bool GameServer::is_valid_state_transition(GAME_STATE from, GAME_STATE to) const {

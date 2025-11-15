@@ -7,17 +7,22 @@
 #include <atomic>
 #include <chrono>
 #include <enet.h>
-
+// Libraries
+#include "libs/frame_timer.h"
+// Components
 #include "components/errors.hpp"
 #include "components/game_state.hpp"
+// Entities
 #include "entities/player.hpp"
-#include "entity_manager.hpp"
+// Systems
 #include "map_system.hpp"
-#include "minion_spawner_system.hpp"
-#include "minion_movement_system.hpp"
-#include "minion_damage_system.hpp"
-#include "minion_serializer.hpp"
-#include "libs/frame_timer.h"
+#include "combat_system.hpp"
+#include "movement_system.hpp"
+#include "spawner_system.hpp"
+#include "entity_manager.hpp"
+#include "serialization_system.hpp"
+// Services
+#include "services/navigation_service.hpp"
 
 /**
  * Central GameServer class encapsulating all server state and logic.
@@ -25,7 +30,7 @@
  */
 class GameServer {
 public:
-    GameServer(int port = 7000, int max_clients = 32);
+    GameServer(int port = 7000, int max_clients = 32, const std::string& map_path = "");
     ~GameServer();
     
     // Prevent copying
@@ -108,6 +113,7 @@ private:
     // Network configuration
     int port_;
     int max_clients_;
+    std::string map_path_;
     ENetHost* enet_server_;
 
     // Server configuration
@@ -127,11 +133,11 @@ private:
     // Player management (using hash map for O(1) lookup)
     std::unordered_map<std::string, Player> players_;
     
+    // Services (Separate thread)
+    std::unique_ptr<NavigationService> navigation_service_;
+
     // ECS systems
     EntityManager entity_manager_;
-    std::unique_ptr<MinionSpawnerSystem> minion_spawner_;
-    std::unique_ptr<MinionMovementSystem> minion_movement_;
-    std::unique_ptr<MinionDamageSystem> minion_damage_;
     Entity* map_entity_ = nullptr;
     
     /**

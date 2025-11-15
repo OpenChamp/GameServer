@@ -6,6 +6,7 @@
 /**
  * Represents a connected player in the game.
  * Contains player state and metadata.
+ * TODO: Refactor with more player-related components instead of a monolithic struct - cmkrist 15/11/2025
  */
 struct Player {
     // Identification

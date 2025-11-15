@@ -95,6 +95,12 @@ std::vector<std::string> DataLoader::list_files_from_directory(std::string path,
     std::vector<std::string> file_names;
 
     for(const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(path)) {
+        // Recursively list files in subdirectories
+        if(entry.exists() && entry.is_directory()) {
+            std::vector<std::string> subdirectory_files = list_files_from_directory(entry.path().string(), file_ending);
+            file_names.insert(file_names.end(), subdirectory_files.begin(), subdirectory_files.end());
+        }
+        
         if(entry.exists() && entry.is_regular_file() && !entry.path().extension().compare(file_ending)) {
             file_names.push_back(entry.path().string());
         }

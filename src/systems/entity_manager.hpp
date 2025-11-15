@@ -113,15 +113,21 @@ class EntityManager {
 public:
     EntityManager() : next_entity_id_(1) {
         // TODO probably use system independent path separator - ploinky 14/11/2025
-        for(std::string file_name : DataLoader::list_files_from_directory("data/entities", ".xml")) {
+        LOG_INFO("Loading templates from ./data");
+        for(std::string file_name : DataLoader::list_files_from_directory("./data", ".xml")) {
             EntityTemplate entity_template = DataLoader::load_entity_template(file_name);
+            if(entity_template_cache.find(entity_template.id) != entity_template_cache.end()) {
+                LOG_WARN("OVERWRITING EXISTING TEMPLATE: %s", entity_template.id.c_str());
+            }
             entity_template_cache.emplace(entity_template.id, entity_template);
         }
+        LOG_INFO("Loaded %zu entity templates", entity_template_cache.size());
     }
     
     /**
      * Create a new entity.
      * @return Reference to the newly created entity
+     * DO NOT USE DIRECTLY - use create_entity_from_template instead -- cmkrist 15/11/2025
      */
     Entity& create_entity() {
         EntityID id = next_entity_id_++;
@@ -152,6 +158,14 @@ public:
         return new_entity;
     }
     
+    bool mark_entity_clean(EntityID id) {
+        auto it = std::find(dirty_entities.begin(), dirty_entities.end(), id);
+        if(it != dirty_entities.end()) {
+            dirty_entities.erase(it);
+            return true;
+        }
+        return false;
+    }
     /**
      * Get an entity by ID.
      * @param id Entity ID

@@ -5,11 +5,9 @@
 #include "../components/movement.hpp"
 
 /**
- * Minion entity.
- * Represents team-aligned AI-controlled units.
- * Components are stats, state, and movement and defaulted on creation.
- * TODO: THIS WILL BE OVERRIDDEN BY THE XML DEFINITION IN data/entities/minions/*.xml - cmkrist 15/11/2025
+ * ONLY HERE FOR VISUAL REPRESENTATION, DO NOT USE DIRECTLY. -- cmkrist 15/11/2025
  */
+
 struct Minion {
     Stats stats;
     State state;
