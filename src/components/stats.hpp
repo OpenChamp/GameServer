@@ -14,13 +14,13 @@ enum class DamageType {
  */
 struct Stats : public Component {
     // === Core Stats ===
-    float max_health = 100.0f;
-    float health = 100.0f;
-    float max_mana = 100.0f;
-    float mana = 100.0f;
-    float move_speed = 5.0f;
-    float required_exp = 100.0f;
-    float addition_exp_per_level = 100.0f;
+    float max_health = 1.0f;
+    float health = 1.0f;
+    float max_mana = 0.0f;
+    float mana = 0.0f;
+    float move_speed = 0.0f;
+    float required_exp = 1.0f;
+    float addition_exp_per_level = 0.0f;
     float current_exp = 0.0f;
     int level = 1;
     
@@ -47,7 +47,7 @@ struct Stats : public Component {
     float spell_vamp = 0.0f; // Percentage of magic damage dealt returned as health
     float omni_vamp = 0.0f; // Percentage of damage dealt returned as health
     float leech = 0.0f; // Percentage of damage dealt returned as mana
-    float vision_range = 5.0f;
+    float vision_range = 1.0f;
     
     COMPONENT_TYPE_ID(Stats, 2002)
 };
