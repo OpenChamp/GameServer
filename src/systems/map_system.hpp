@@ -18,23 +18,21 @@ public:
      * Data structure for navmesh information.
      */
     struct NavMeshData {
-        std::vector<Vec3> vertices;
+        std::vector<Vec2> vertices;
         std::vector<std::vector<uint32_t>> polygons;
     };
     
     /**
      * Load a map from a Godot tscn file.
-     * @param map_name Name of the map (e.g., "Konda")
-     * @param file_path Path to the .tscn file
+     * If no path is provided or the file doesn't exist, scans the current directory for .tscn files.
+     * If no map file is found using either method, returns nullptr.
+     * @param map_name Name of the map (e.g., "Konda"). If empty, derived from filename.
+     * @param file_path Path to the .tscn file. If empty, scans current directory.
      * @param entity_manager Reference to the entity manager
      * @return Pointer to the created map entity, or nullptr if loading failed
      */
-    static Entity* load_map(const std::string& map_name, const std::string& file_path, EntityManager& entity_manager);
+    static EntityID load_map(const std::string& map_name, const std::string& file_path, EntityManager& entity_manager);
 
-    static Entity* load_debug_map(EntityManager& entity_manager);
-
-    static Entity* load_default_map(EntityManager& entity_manager);
-    
     /**
      * Serialize map data to an ENet packet.
      * Packet format:
@@ -58,6 +56,6 @@ private:
      * @return NavMeshData with vertices and polygons, empty if parsing failed
      */
     static NavMeshData parse_navmesh_from_tscn(const std::string& file_content);
-    static std::vector<Vec3> parse_vertices(const std::string& vertices_str);
+    static std::vector<Vec2> parse_vertices_to_2D(const std::string& vertices_str);
     static std::vector<std::vector<uint32_t>> parse_polygons(const std::string& polygons_str);
 };
