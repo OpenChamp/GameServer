@@ -4,9 +4,119 @@
 #include <algorithm>
 
 /**
+ * Simple 2D vector implementation.
+ * Used for Navigation and other 2D vector math.
+ * https://ultralig.ht/api/cpp/1_3_0/structultralight_1_1vec2.html
+ */
+struct Vec2 {
+    float x = 0.0f;
+    float y = 0.0f;
+    
+    // Constructors
+    Vec2() = default;
+    Vec2(float x, float y) : x(x), y(y) {}
+    explicit Vec2(float value) : x(value), y(value) {}
+    
+    // Vector operations
+    Vec2 operator+(const Vec2& other) const {
+        return Vec2(x + other.x, y + other.y);
+    }
+    
+    Vec2 operator-(const Vec2& other) const {
+        return Vec2(x - other.x, y - other.y);
+    }
+    
+    Vec2 operator*(float scalar) const {
+        return Vec2(x * scalar, y * scalar);
+    }
+    
+    Vec2 operator/(float scalar) const {
+        return Vec2(x / scalar, y / scalar);
+    }
+    
+    Vec2& operator+=(const Vec2& other) {
+        x += other.x;
+        y += other.y;
+        return *this;
+    }
+    
+    Vec2& operator-=(const Vec2& other) {
+        x -= other.x;
+        y -= other.y;
+        return *this;
+    }
+    
+    Vec2& operator*=(float scalar) {
+        x *= scalar;
+        y *= scalar;
+        return *this;
+    }
+    
+    Vec2& operator/=(float scalar) {
+        x /= scalar;
+        y /= scalar;
+        return *this;
+    }
+    
+    // Dot product
+    float dot(const Vec2& other) const {
+        return x * other.x + y * other.y;
+    }
+    
+    // Length/magnitude
+    float length() const {
+        return std::sqrt(x * x + y * y);
+    }
+    
+    float length_squared() const {
+        return x * x + y * y;
+    }
+    
+    // Normalize (in-place)
+    Vec2& normalize() {
+        float len = length();
+        if (len > 0.0f) {
+            x /= len;
+            y /= len;
+        }
+        return *this;
+    }
+    
+    // Normalized copy
+    Vec2 normalized() const {
+        Vec2 copy = *this;
+        copy.normalize();
+        return copy;
+    }
+    
+    // Distance to another point
+    float distance_to(const Vec2& other) const {
+        return (*this - other).length();
+    }
+    
+    float distance_squared_to(const Vec2& other) const {
+        return (*this - other).length_squared();
+    }
+    
+    // Comparison
+    bool operator==(const Vec2& other) const {
+        return x == other.x && y == other.y;
+    }
+    
+    bool operator!=(const Vec2& other) const {
+        return !(*this == other);
+    }
+};
+
+// Scalar multiplication (left operand)
+inline Vec2 operator*(float scalar, const Vec2& vec) {
+    return vec * scalar;
+}
+
+/**
  * Simple 3D vector implementation.
  * https://ultralig.ht/api/cpp/1_3_0/structultralight_1_1vec3.html
- * Used for positions, directions, and other 3D vector math.
+ * Used for TSCN 3D conversions
  */
 struct Vec3 {
     float x = 0.0f;
