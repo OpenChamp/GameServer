@@ -6,25 +6,18 @@
 #include <log.hpp>
 #include <cstring>
 
-ENetPacket* MinionSerializer::serialize_minions(EntityManager& entity_manager) {
+std::vector<uint8_t> MinionSerializer::serialize_minions(EntityManager& entity_manager) {
     auto minions = collect_minions(entity_manager);
     
     if (minions.empty()) {
-        return nullptr;
+        return {};
     }
     
     // Calculate packet size
     // 1 byte (type) + 4 bytes (count) + (21 bytes per minion)
     size_t packet_size = 1 + 4 + (minions.size() * 21);
     
-    // Create packet
-    ENetPacket* packet = enet_packet_create(nullptr, packet_size, ENET_PACKET_FLAG_RELIABLE);
-    if (!packet) {
-        LOG_ERROR("Failed to allocate minion state packet");
-        return nullptr;
-    }
-    
-    uint8_t* data = (uint8_t*)(packet->data);
+    std::vector<uint8_t> data(packet_size);
     size_t offset = 0;
     
     // Write packet type
@@ -32,25 +25,25 @@ ENetPacket* MinionSerializer::serialize_minions(EntityManager& entity_manager) {
     
     // Write minion count
     uint32_t count = minions.size();
-    std::memcpy(data + offset, &count, sizeof(uint32_t));
+    std::memcpy(data.data() + offset, &count, sizeof(uint32_t));
     offset += 4;
     
     // Write each minion
     for (const auto& minion : minions) {
         // Entity ID
-        std::memcpy(data + offset, &minion.entity_id, sizeof(uint32_t));
+        std::memcpy(data.data() + offset, &minion.entity_id, sizeof(uint32_t));
         offset += 4;
         
         // Position (x, y, z)
-        std::memcpy(data + offset, &minion.x, sizeof(float));
+        std::memcpy(data.data() + offset, &minion.x, sizeof(float));
         offset += 4;
-        std::memcpy(data + offset, &minion.y, sizeof(float));
+        std::memcpy(data.data() + offset, &minion.y, sizeof(float));
         offset += 4;
-        std::memcpy(data + offset, &minion.z, sizeof(float));
+        std::memcpy(data.data() + offset, &minion.z, sizeof(float));
         offset += 4;
         
         // Health
-        std::memcpy(data + offset, &minion.health, sizeof(float));
+        std::memcpy(data.data() + offset, &minion.health, sizeof(float));
         offset += 4;
         
         // State
@@ -58,7 +51,7 @@ ENetPacket* MinionSerializer::serialize_minions(EntityManager& entity_manager) {
     }
     
     LOG_DEBUG("Serialized %zu minions into packet (size: %zu bytes)", minions.size(), packet_size);
-    return packet;
+    return data;
 }
 
 std::vector<MinionSerializer::SerializedMinion> MinionSerializer::collect_minions(EntityManager& entity_manager) {

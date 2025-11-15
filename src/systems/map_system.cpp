@@ -334,16 +334,16 @@ std::vector<std::vector<uint32_t>> MapSystem::parse_polygons(const std::string& 
     return polygons;
 }
 
-ENetPacket* MapSystem::serialize_map(Entity* map_entity) {
+std::vector<uint8_t> MapSystem::serialize_map(Entity* map_entity) {
     if (!map_entity) {
         LOG_ERROR("Cannot serialize null map entity");
-        return nullptr;
+        return {};
     }
     
     Map* map = map_entity->get_component<Map>();
     if (!map) {
         LOG_ERROR("Map entity has no Map component");
-        return nullptr;
+        return {};
     }
     
     // Calculate packet size
@@ -355,38 +355,31 @@ ENetPacket* MapSystem::serialize_map(Entity* map_entity) {
     
     size_t packet_size = 1 + 4 + name_len + 4 + 4;
     
-    // Create packet
-    ENetPacket* packet = enet_packet_create(nullptr, packet_size, ENET_PACKET_FLAG_RELIABLE);
-    if (!packet) {
-        LOG_ERROR("Failed to allocate map state packet");
-        return nullptr;
-    }
-    
-    uint8_t* data = (uint8_t*)(packet->data);
+    std::vector<uint8_t> data(packet_size);
     size_t offset = 0;
     
     // Write packet type
     data[offset++] = (uint8_t)(PACKET_TYPE::SPAWN_MAP);
     
     // Write map name length
-    std::memcpy(data + offset, &name_len, sizeof(uint32_t));
+    std::memcpy(data.data() + offset, &name_len, sizeof(uint32_t));
     offset += 4;
     
     // Write map name
-    std::memcpy(data + offset, map->name.c_str(), name_len);
+    std::memcpy(data.data() + offset, map->name.c_str(), name_len);
     offset += name_len;
     
     // Write vertex count
-    std::memcpy(data + offset, &vertex_count, sizeof(uint32_t));
+    std::memcpy(data.data() + offset, &vertex_count, sizeof(uint32_t));
     offset += 4;
 
     // Write polygon count
-    std::memcpy(data + offset, &polygon_count, sizeof(uint32_t));
+    std::memcpy(data.data() + offset, &polygon_count, sizeof(uint32_t));
     offset += 4;
     
     LOG_INFO("Serialized map '%s' with %zu vertices and %zu polygons into packet (size: %zu bytes)",
              map->name.c_str(), map->vertices.size(), map->polygons.size(), packet_size);
     
-    return packet;
+    return data;
 }
 
