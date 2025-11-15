@@ -10,11 +10,11 @@ GameServer::GameServer(int port, int max_clients)
     : max_clients_(max_clients)
     , shutdown_requested_(false)
     , current_state_(GAME_STATE::PREGAME)
-    , last_minion_broadcast_(std::chrono::high_resolution_clock::now()) {
-    network_service_ = NetworkService(port, max_clients);
+    , last_minion_broadcast_(std::chrono::high_resolution_clock::now())
+    , network_service_(NetworkService(port, max_clients)) {
     network_service_.on_client_connected = [this](std::string client_id) { on_client_connect(client_id); };
     network_service_.on_client_disconnected = [this](std::string client_id) { on_client_disconnect(client_id); };
-    network_service_.on_packet_received = [this](std::string client_id, ENetPacket* packet) { on_packet_received(client_id, packet); };
+    network_service_.on_packet_received = [this](std::string client_id, const uint8_t* data, size_t length) { on_packet_received(client_id, data, length); };
     network_service_.start_server();
 }
 
@@ -142,7 +142,7 @@ void GameServer::on_client_connect(std::string client_id) {
     
     // Tell the player which map to load
     if (map_entity_) {
-        ENetPacket* map_packet = MapSystem::serialize_map(map_entity_);
+        std::vector<uint8_t> map_packet = MapSystem::serialize_map(map_entity_);
         network_service_.send_packet(map_packet, client_id);
         LOG_INFO("Sent map data to client %s", client_id.c_str());
     }
@@ -161,17 +161,17 @@ void GameServer::on_client_connect(std::string client_id) {
     broadcast_player_list();
 }
 
-void GameServer::on_packet_received(std::string client_id, ENetPacket* packet) {
+void GameServer::on_packet_received(std::string client_id, const uint8_t* data, size_t length) {
     // Validate and process packet
-    if (!PacketValidator::validate_packet(packet->data, packet->dataLength)) {
+    if (!PacketValidator::validate_packet(data, length)) {
         LOG_WARN("Invalid packet received from %s", client_id.c_str());
         return;
     }
-    PACKET_TYPE packet_type = (PACKET_TYPE)(packet->data[0]);
+    PACKET_TYPE packet_type = (PACKET_TYPE)(data[0]);
     
     switch (packet_type) {
         case PACKET_TYPE::PLAYER_READY:
-            handle_player_ready_packet(client_id, packet->data, packet->dataLength);
+            handle_player_ready_packet(client_id, data, length);
             break;
             
         default:
@@ -184,8 +184,8 @@ void GameServer::on_packet_received(std::string client_id, ENetPacket* packet) {
     if (it != players_.end()) {
         it->second.update_activity();
     }
-            
 }
+
 bool GameServer::handle_player_ready_packet(std::string client_id, const uint8_t* packet_data, size_t packet_length) {
     bool is_ready = false;
     if (!PacketValidator::extract_ready_status(packet_data, packet_length, is_ready)) {
@@ -255,13 +255,13 @@ void GameServer::broadcast_minion_states() {
     }
     
     // Serialize minion states
-    ENetPacket* packet = MinionSerializer::serialize_minions(entity_manager_);
-    if (!packet) {
+    std::vector<uint8_t> data = MinionSerializer::serialize_minions(entity_manager_);
+    if (data.empty()) {
         // No minions to broadcast yet
         return;
     }
 
-    network_service_.broadcast_packet(packet);
+    network_service_.broadcast_packet(data);
 }
 
 bool GameServer::is_valid_state_transition(GAME_STATE from, GAME_STATE to) const {

@@ -1,6 +1,16 @@
 #include "network_service.hpp"
 
+
 #include "libs/log.hpp"
+
+struct NetworkService::NetworkBackend {
+    NetworkBackend() {
+
+    }
+
+    std::map<std::string, ENetPeer*> clients_;
+    ENetHost* enet_server_;
+};
 
 NetworkService::NetworkService() {
     port_ = -1;
@@ -40,8 +50,8 @@ ERROR_CODE NetworkService::start_server() {
     LOG_INFO("Attempting to bind to port %d with max_clients=%zu", port_, (size_t)max_clients_);
     
     // Create server host
-    enet_server_ = enet_host_create(&address, (size_t)max_clients_, 2, 0, 0);
-    if (!enet_server_) {
+    backend_->enet_server_ = enet_host_create(&address, (size_t)max_clients_, 2, 0, 0);
+    if (!backend_->enet_server_) {
         LOG_ERROR("Failed to create ENet server host on port %d - port may already be in use or permission denied", port_);
         enet_deinitialize();
         return ERROR_CODE::ERROR_ENET_CREATION_FAILED;
@@ -54,11 +64,11 @@ ERROR_CODE NetworkService::start_server() {
 
 void NetworkService::disconnect() {
     // Clean up ENet resources
-    if (enet_server_) {
+    if (backend_->enet_server_) {
         // Clean up all peer data
-        if (enet_server_->peers) {
-            for (size_t i = 0; i < (size_t)enet_server_->connectedPeers; ++i) {
-                ENetPeer* peer = &enet_server_->peers[i];
+        if (backend_->enet_server_->peers) {
+            for (size_t i = 0; i < (size_t)backend_->enet_server_->connectedPeers; ++i) {
+                ENetPeer* peer = &backend_->enet_server_->peers[i];
                 if (peer && peer->data != nullptr) {
                     delete (std::string*)(peer->data);
                     peer->data = nullptr;
@@ -66,20 +76,20 @@ void NetworkService::disconnect() {
             }
         }
         
-        enet_host_destroy(enet_server_);
-        enet_server_ = nullptr;
+        enet_host_destroy(backend_->enet_server_);
+        backend_->enet_server_ = nullptr;
     }
     is_connected_ = true;
 }
 
 
 bool NetworkService::run_callbacks() {
-    if (!enet_server_) {
+    if (!backend_->enet_server_) {
         return false;
     }
     
     ENetEvent event;
-    int service_result = enet_host_service(enet_server_, &event, 0);
+    int service_result = enet_host_service(backend_->enet_server_, &event, 0);
     
     if (service_result < 0) {
         LOG_ERROR("ENet service error occurred");
@@ -103,7 +113,7 @@ bool NetworkService::run_callbacks() {
             
             // Store client_id string pointer in ENet peer data
             event.peer->data = new std::string(client_id);
-            clients_.emplace(client_id, event.peer);
+            backend_->clients_.emplace(client_id, event.peer);
             
             if(on_client_connected) {
                 on_client_connected(client_id);
@@ -122,7 +132,7 @@ bool NetworkService::run_callbacks() {
                         client_id_ptr->c_str(), event.channelID, (unsigned int)event.packet->dataLength);
                 
             if(on_packet_received) {
-                on_packet_received(*client_id_ptr, event.packet);
+                on_packet_received(*client_id_ptr, event.packet->data, event.packet->dataLength);
             }
 
             enet_packet_destroy(event.packet);
@@ -144,7 +154,7 @@ bool NetworkService::run_callbacks() {
                 event.peer->data = nullptr;
             }
 
-            clients_.erase(client_id);
+            backend_->clients_.erase(client_id);
 
             LOG_INFO("Client disconnected: %s", client_id.c_str());
 
@@ -161,8 +171,8 @@ bool NetworkService::run_callbacks() {
 }
 
 void NetworkService::send_packet(PACKET_TYPE packet_type, std::string peer_id) {
-    auto client_it = clients_.find(peer_id);
-    if(client_it == clients_.end()) {
+    auto client_it = backend_->clients_.find(peer_id);
+    if(client_it == backend_->clients_.end()) {
         LOG_ERROR("Failed to send packet to client %s, client is invalid", peer_id.c_str());
         return;
     }
@@ -180,26 +190,37 @@ void NetworkService::send_packet(PACKET_TYPE packet_type, std::string peer_id) {
     }
 }
 
-void NetworkService::send_packet(ENetPacket* packet, std::string client_id) {
-    auto peer_it = clients_.find(client_id);
+void NetworkService::send_packet(const std::vector<uint8_t>& data, std::string client_id) {
+    auto peer_it = backend_->clients_.find(client_id);
 
-    if(peer_it == clients_.end()) {
+    if(peer_it == backend_->clients_.end()) {
         LOG_ERROR("Failed to send packet to client %s, client is invalid", client_id.c_str());
         return;
     }
     
+    // Create packet
+    ENetPacket* packet = enet_packet_create(data.data(), data.size(), ENET_PACKET_FLAG_RELIABLE);
     if (!packet) {
-        LOG_ERROR("Failed to send packet to client %s, packet is invalid", client_id.c_str());
+        LOG_ERROR("Failed to send packet to client %s, failed to allocate packet");
         return;
     }
-    
+
     enet_peer_send(peer_it->second, 0, packet);
+
+    enet_packet_destroy(packet);
 }
 
-void NetworkService::broadcast_packet(ENetPacket* packet) {
+void NetworkService::broadcast_packet(const std::vector<uint8_t>& data) {
+    // Create packet
+    ENetPacket* packet = enet_packet_create(data.data(), data.size(), ENET_PACKET_FLAG_RELIABLE);
+    if (!packet) {
+        LOG_ERROR("Failed to send packet to client %s, failed to allocate packet");
+        return;
+    }
+
     // Broadcast to all connected peers
-    if (enet_server_) {
-        enet_host_broadcast(enet_server_, 0, packet);
+    if (backend_->enet_server_) {
+        enet_host_broadcast(backend_->enet_server_, 0, packet);
         LOG_DEBUG("Broadcasted minion state packet to all clients");
     }
 

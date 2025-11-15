@@ -144,7 +144,7 @@ private:
      * @param client_id The client ID of the peer that sent the packet
      * @param packet The packet the is incoming
      */
-    void on_packet_received(std::string client_id, ENetPacket* packet);
+    void on_packet_received(std::string client_id, const uint8_t* data, size_t length);
 
     /**
      * Handle player ready status packet.

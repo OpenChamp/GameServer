@@ -3,8 +3,10 @@
 #include <map>
 #include <string>
 #include <functional>
+#include <memory>
 
 #include <enet.h>
+
 #include <systems/packet_validator.hpp>
 #include "components/errors.hpp"
 
@@ -42,16 +44,16 @@ public:
 
     /**
      * Send a packet to a peer.
-     * @param packet Packet to send
+     * @param data Data to send
      * @param client_id Id of the peer to send the packet to
      */
-    void send_packet(ENetPacket* packet, std::string client_id);
+    void send_packet(const std::vector<uint8_t>& data, std::string client_id);
 
     /**
      * Send a packet to all connected peers.
-     * @param packet The packet to broadcast
+     * @param data The data to broadcast
      */
-    void broadcast_packet(ENetPacket* packet);
+    void broadcast_packet(const std::vector<uint8_t>& data);
 
     /**
      * Poll connections and run callbacks
@@ -77,12 +79,13 @@ public:
      * @param string ID of the client that has sent the packet
      * @param packet Packet that was received
      */
-    std::function<void(std::string, ENetPacket*)> on_packet_received = nullptr;
+    std::function<void(std::string, const uint8_t* data, size_t length)> on_packet_received = nullptr;
 private:
-    std::map<std::string, ENetPeer*> clients_;
+    struct NetworkBackend;
+
+    std::unique_ptr<NetworkBackend> backend_;
     
     bool is_connected_ = false;
     int port_;
     int max_clients_;
-    ENetHost* enet_server_;
 };
