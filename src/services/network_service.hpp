@@ -7,6 +7,7 @@
 
 #include <enet.h>
 
+#include <systems/math.hpp>
 #include <systems/packet_validator.hpp>
 #include "components/errors.hpp"
 
@@ -70,6 +71,7 @@ public:
     void broadcast_packet(const PACKET_TYPE& packet_type);
 
 
+    void send_position(uint32_t id, Vec2& position); // EntityID, but avoiding circular dependency -- cmkrist 15/11/2025
     /**
      * Poll connections and run callbacks
      * @return True if no errors occured

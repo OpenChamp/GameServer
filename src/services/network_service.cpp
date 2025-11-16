@@ -1,6 +1,6 @@
 #include "network_service.hpp"
 
-
+#include "systems/math.hpp"
 #include "libs/log.hpp"
 
 struct NetworkService::NetworkBackend {
@@ -251,6 +251,30 @@ void NetworkService::send_packet(const std::vector<uint8_t>& data, std::string c
         LOG_DEBUG("Sent packet to client %s", client_id.c_str());
     }
     enet_packet_destroy(packet);
+}
+
+void NetworkService::send_position(uint32_t id, Vec2& position) {
+    std::vector<uint8_t> packet_data;
+    packet_data.push_back((uint8_t)PACKET_TYPE::ENTITY_POSITION);
+    // Entity ID (4 bytes) (little-endian)
+    packet_data.push_back((id & 0xFF));
+    packet_data.push_back((id >> 8) & 0xFF);
+    packet_data.push_back((id >> 16) & 0xFF);
+    packet_data.push_back((id >> 24) & 0xFF);
+    // Position X (4 bytes float)
+    float pos_x = position.x;
+    packet_data.push_back((reinterpret_cast<uint32_t&>(pos_x) & 0xFF));
+    packet_data.push_back((reinterpret_cast<uint32_t&>(pos_x) >> 8) & 0xFF);
+    packet_data.push_back((reinterpret_cast<uint32_t&>(pos_x) >> 16) & 0xFF);
+    packet_data.push_back((reinterpret_cast<uint32_t&>(pos_x) >> 24) & 0xFF);
+    // Position Y (4 bytes float)
+    float pos_y = position.y;
+    packet_data.push_back((reinterpret_cast<uint32_t&>(pos_y) & 0xFF));
+    packet_data.push_back((reinterpret_cast<uint32_t&>(pos_y) >> 8) & 0xFF);
+    packet_data.push_back((reinterpret_cast<uint32_t&>(pos_y) >> 16) & 0xFF);
+    packet_data.push_back((reinterpret_cast<uint32_t&>(pos_y) >> 24) & 0xFF);
+
+    NetworkService::broadcast_packet(packet_data);
 }
 
 void NetworkService::broadcast_packet(const std::vector<uint8_t>& data) {
