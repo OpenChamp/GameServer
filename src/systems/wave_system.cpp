@@ -29,7 +29,6 @@ WaveSystem::WaveSystem(EntityManager* entity_manager) {
         "ranged_minion",
         "magic_minion",
         "ranged_minion"
-        
     };
 
 }

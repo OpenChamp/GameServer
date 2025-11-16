@@ -11,7 +11,7 @@ enum class PACKET_TYPE : uint8_t {
     GAME_START,
     GAME_STATE,
     SPAWN_MAP,
-    SPAWN_ENTITY,
+    ENTITY_POSITION,
     PLAYER_DISCONNECT,
     MINION_STATE,  // Contains all active minion positions and states
 };

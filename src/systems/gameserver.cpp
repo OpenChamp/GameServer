@@ -8,6 +8,8 @@
 #include <chrono>
 #include <vector>
 
+#include <components/movement.hpp>
+
 #include <systems/wave_system.hpp>
 
 GameServer::GameServer(int port, int max_clients, const std::string& map_path)
@@ -71,6 +73,19 @@ void GameServer::run() {
 void GameServer::frame_tick() {
     float delta_time_ms = frame_timer_.frame_duration_in_ms();
     wave_system_->tick(delta_time_ms);
+    // Brain Logic -- cmkrist 15/11/2025
+    if (current_state_ == GAME_STATE::ONGOING) {
+        // Update AI for all active entities
+        std::unordered_map<EntityID, Entity>& entities = entity_manager_.get_all_entities();
+        for (auto& pair : entities) {
+            Entity& entity = pair.second;
+            // Just send their positions for now -- cmkrist 15/11/2025
+            if (entity.has_component<Movement>()) {
+                Movement* move_comp = entity.get_component<Movement>();
+                network_service_.send_position(entity.get_id(), move_comp->position);
+            }
+        }
+    }
 }
 
 void GameServer::request_shutdown() {
