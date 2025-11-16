@@ -84,7 +84,6 @@ void NetworkService::disconnect() {
     is_connected_ = true;
 }
 
-
 bool NetworkService::run_callbacks() {
     if (!backend_->enet_server_) {
         return false;
@@ -266,9 +265,30 @@ void NetworkService::broadcast_packet(const std::vector<uint8_t>& data) {
     if (backend_->enet_server_) {
         enet_host_broadcast(backend_->enet_server_, 0, packet);
         LOG_DEBUG("Broadcasted minion state packet to all clients");
+    } else {
+        // destroy packet if server not running
+        enet_packet_destroy(packet);
     }
+}
 
-    enet_packet_destroy(packet);
+void NetworkService::broadcast_packet(const PACKET_TYPE& packet_type) {
+    // Create packet
+    uint8_t packet_data[1];
+    packet_data[0] = static_cast<uint8_t>(packet_type);
+    ENetPacket* packet = enet_packet_create(packet_data, sizeof(packet_data), ENET_PACKET_FLAG_RELIABLE);
+    if (!packet) {
+        LOG_ERROR("Failed to send packet, failed to allocate packet");
+        return;
+    }
+    LOG_INFO("Broadcasting packet type %d to all clients", (int)packet_type);
+    
+    // Broadcast to all connected peers
+    if (backend_->enet_server_) {
+        enet_host_broadcast(backend_->enet_server_, 0, packet);
+        LOG_DEBUG("Broadcasted packet type %d to all clients", (int)packet_type);
+    } else {
+        enet_packet_destroy(packet);
+    }
 }
 
 bool NetworkService::is_connected() {

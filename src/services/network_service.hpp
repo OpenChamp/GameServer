@@ -64,6 +64,13 @@ public:
     void broadcast_packet(const std::vector<uint8_t>& data);
 
     /**
+     * Send a packet to all connected peers.
+     * @param packet_type The type of packet to broadcast
+     */
+    void broadcast_packet(const PACKET_TYPE& packet_type);
+
+
+    /**
      * Poll connections and run callbacks
      * @return True if no errors occured
      */
