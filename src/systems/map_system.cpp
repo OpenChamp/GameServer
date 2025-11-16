@@ -14,6 +14,11 @@
 
 std::optional<Map> MapSystem::load_map(const std::optional<std::string>& file_path) {
     std::string default_map_dir = "./data/maps/"; // STATIC -- cmkrist 15/11/2025
+    // Check for default map directory, if missing error out and die
+    if (!std::filesystem::exists(default_map_dir)) {
+        LOG_ERROR("Default map directory does not exist: %s", default_map_dir.c_str());
+        return std::nullopt;
+    }
     // Create initial return variables
     std::optional<Map> loaded_map;
     std::string actual_file_path;

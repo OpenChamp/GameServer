@@ -93,6 +93,11 @@ EntityTemplate DataLoader::load_entity_template(std::string file_name) {
 
 std::vector<std::string> DataLoader::list_files_from_directory(std::string path, std::string file_ending) {
     std::vector<std::string> file_names;
+    // Verify path exists
+    if(!std::filesystem::exists(path)) {
+        LOG_ERROR("DataLoader::list_files_from_directory: Path %s does not exist!", path.c_str());
+        return file_names;
+    }
 
     for(const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(path)) {
         // Recursively list files in subdirectories
