@@ -172,10 +172,10 @@ bool NetworkService::run_callbacks() {
     return true;
 }
 
-void NetworkService::send_packet(PACKET_TYPE packet_type, std::string peer_id) {
-    auto client_it = backend_->clients_.find(peer_id);
+void NetworkService::send_packet(PACKET_TYPE packet_type, std::string client_id) {
+    auto client_it = backend_->clients_.find(client_id);
     if(client_it == backend_->clients_.end()) {
-        LOG_ERROR("Failed to send packet to client %s, client is invalid", peer_id.c_str());
+        LOG_ERROR("Failed to send packet to client %s, client is invalid", client_id.c_str());
         return;
     }
 
@@ -185,8 +185,46 @@ void NetworkService::send_packet(PACKET_TYPE packet_type, std::string peer_id) {
     
     ENetPacket* packet = enet_packet_create(packet_data, sizeof(packet_data), ENET_PACKET_FLAG_RELIABLE);
     if (packet) {
-        enet_peer_send(peer, 0, packet);
-        LOG_DEBUG("Sent packet type %d to peer", (int)packet_type);
+        int err = enet_peer_send(peer, 0, packet);
+        if (err < 0) {
+            LOG_ERROR("Failed to send packet type %d to peer", (int)packet_type);
+        } else {
+            LOG_DEBUG("Sent packet type %d to peer", (int)packet_type);
+        }
+    } else {
+        LOG_ERROR("Failed to create packet for type %d", (int)packet_type);
+    }
+}
+
+void NetworkService::send_packet(PACKET_TYPE packet_type, const std::string& data, const std::string& client_id) {
+    auto client_it = backend_->clients_.find(client_id);
+    if(client_it == backend_->clients_.end()) {
+        LOG_ERROR("Failed to send packet to client %s, client is invalid", client_id.c_str());
+        return;
+    }
+    // Verify data size fits in uint16_t
+    if (data.size() > uint16_t(-1)) {
+        LOG_ERROR("Data size %zu exceeds maximum allowed size for packet", data.size());
+        return;
+    }
+    ENetPeer* peer = client_it->second;
+    std::vector<uint8_t> packet_data;
+    packet_data.push_back(static_cast<uint8_t>(packet_type));
+    // 2 bytes for length (Big-endian)
+    uint16_t data_length = static_cast<uint16_t>(data.size());
+    packet_data.push_back((data_length >> 8) & 0xFF);
+    // Add data
+    packet_data.push_back(data_length & 0xFF);
+    packet_data.insert(packet_data.end(), data.begin(), data.end());
+
+    ENetPacket* packet = enet_packet_create(packet_data.data(), packet_data.size(), ENET_PACKET_FLAG_RELIABLE);
+    if (packet) {
+        int err = enet_peer_send(peer, 0, packet);
+        if (err < 0) {
+            LOG_ERROR("Failed to send packet type %d to peer", (int)packet_type);
+        } else {
+            LOG_DEBUG("Sent packet type %d to peer", (int)packet_type);
+        }
     } else {
         LOG_ERROR("Failed to create packet for type %d", (int)packet_type);
     }
@@ -207,8 +245,12 @@ void NetworkService::send_packet(const std::vector<uint8_t>& data, std::string c
         return;
     }
 
-    enet_peer_send(peer_it->second, 0, packet);
-
+    int err = enet_peer_send(peer_it->second, 0, packet);
+    if (err < 0) {
+        LOG_ERROR("Failed to send packet to client %s", client_id.c_str());
+    } else {
+        LOG_DEBUG("Sent packet to client %s", client_id.c_str());
+    }
     enet_packet_destroy(packet);
 }
 

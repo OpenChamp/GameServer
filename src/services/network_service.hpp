@@ -43,6 +43,14 @@ public:
     void send_packet(PACKET_TYPE packet_type, std::string client_id);
 
     /**
+     * Send a packet of specified type to a peer with data.
+     * @param packet_type Type of packet to send
+     * @param data Data to send (string)
+     * @param client_id Id of the peer to send the packet to
+     */
+    void send_packet(PACKET_TYPE packet_type, const std::string& data, const std::string& client_id);
+
+    /**
      * Send a packet to a peer.
      * @param data Data to send
      * @param client_id Id of the peer to send the packet to
