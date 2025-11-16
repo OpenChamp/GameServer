@@ -39,7 +39,7 @@ ERROR_CODE GameServer::initialize() {
         return ERROR_CODE::ERROR_ENET_CREATION_FAILED;
     }
 
-    map_pointer_ = new Map(std::move(map_opt.value()));
+    map_pointer_ = std::make_unique<Map>(std::move(map_opt.value()));
 
     // Initialize Navigation
     navigation_service_ = std::make_unique<NavigationService>(std::move(map_opt.value()));
