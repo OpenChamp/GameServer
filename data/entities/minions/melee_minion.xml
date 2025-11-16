@@ -14,6 +14,7 @@
         health="100"
         move_speed="10"
     />
+    <pathfinding />
     <!-- <brain
         priorities = ["attack_nearest_enemy", "move_to_target"]
         target_type = "enemy"

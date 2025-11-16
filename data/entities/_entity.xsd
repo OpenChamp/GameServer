@@ -13,6 +13,8 @@
                     <xs:attribute name="move_speed" type="xs:float" use="optional" />
                 </xs:complexType>
             </xs:element>
+            <xs:element name="pathfinding" minOccurs="0" maxOccurs="1">
+            </xs:element>
             <xs:element name="stats" minOccurs="0" maxOccurs="1">
                 <xs:complexType>
                     <!-- Core Stats -->
