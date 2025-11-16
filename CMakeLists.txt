@@ -50,6 +50,7 @@ set(GAMESERVER_SOURCES
 	src/main.cpp
 	# Services
 	src/services/navigation_service.cpp
+	src/services/astar_pathfinding.cpp
 	# Systems
 	src/systems/combat_system.cpp
 	src/services/network_service.cpp
@@ -77,6 +78,7 @@ set(GAMESERVER_HEADERS
 	src/components/map.hpp
 	src/components/navmesh.hpp
 	src/services/navigation_service.hpp
+	src/services/astar_pathfinding.hpp
 	src/services/network_service.hpp
 	src/systems/data_loader.hpp
 	src/systems/map_system.hpp

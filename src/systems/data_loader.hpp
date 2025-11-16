@@ -5,6 +5,7 @@
 #include <map>
 
 #include <components/movement.hpp>
+#include <components/pathfinding.hpp>
 #include <components/stats.hpp>
 #include <libs/log.hpp>
 
