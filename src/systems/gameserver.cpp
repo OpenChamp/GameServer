@@ -42,14 +42,18 @@ ERROR_CODE GameServer::initialize() {
     map_pointer_ = std::make_unique<Map>(std::move(map_opt.value()));
     // Initialize Navigation
     navigation_service_ = std::make_unique<NavigationService>(std::move(map_opt.value()));
-    // Initialize Wave System
-    wave_system_ = std::make_unique<WaveSystem>(&entity_manager_);
     // Initialize Network
     network_service_.on_client_connected = [this](std::string client_id) { on_client_connect(client_id); };
     network_service_.on_client_disconnected = [this](std::string client_id) { on_client_disconnect(client_id); };
     network_service_.on_packet_received = [this](std::string client_id, const uint8_t* data, size_t length) { on_packet_received(client_id, data, length); };
     ERROR_CODE net_result = network_service_.start_server();
-    return std::max<ERROR_CODE>(ERROR_CODE::ERROR_NONE, net_result);
+    if (net_result != ERROR_CODE::ERROR_NONE) {
+        LOG_ERROR("Failed to start network service");
+        return net_result;
+    }
+    // Initialize Wave System
+    wave_system_ = std::make_unique<WaveSystem>(&entity_manager_, &network_service_);
+    return ERROR_CODE::ERROR_NONE;
 }
 
 void GameServer::run() {
@@ -82,7 +86,8 @@ void GameServer::frame_tick() {
             // Just send their positions for now -- cmkrist 15/11/2025
             if (entity.has_component<Movement>()) {
                 Movement* move_comp = entity.get_component<Movement>();
-                network_service_.send_position(entity.get_id(), move_comp->position);
+                std::vector<uint8_t> packet = SerializationSystem::serialize_entity_position(entity.get_id(), move_comp->position);
+                network_service_.broadcast_packet(packet);
             }
         }
     }
@@ -154,7 +159,7 @@ void GameServer::on_client_connect(std::string client_id) {
     
     // Tell the player which map to load
     if (map_pointer_) {
-        network_service_.send_packet(PACKET_TYPE::SPAWN_MAP, map_pointer_->name, client_id);
+        network_service_.send_packet(PACKET_TYPE::MAP_LOAD, map_pointer_->name, client_id);
     }
 
     LOG_INFO("Player %s added. Total players: %zu/%d",

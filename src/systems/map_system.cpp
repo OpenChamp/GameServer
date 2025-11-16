@@ -271,7 +271,7 @@ std::vector<uint8_t> MapSystem::serialize_map(Entity* map_entity) {
     size_t offset = 0;
     
     // Write packet type
-    data[offset++] = (uint8_t)(PACKET_TYPE::SPAWN_MAP);
+    data[offset++] = (uint8_t)(PACKET_TYPE::MAP_LOAD);
     
     // Write map name length
     std::memcpy(data.data() + offset, &name_len, sizeof(uint32_t));

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <services/network_service.hpp>
 #include <cstdint>
 #include <systems/entity_manager.hpp>
 
@@ -9,7 +10,7 @@
  */
 class WaveSystem {
 public:
-    WaveSystem(EntityManager* entity_manager);
+    WaveSystem(EntityManager* entity_manager, NetworkService* network_service = nullptr);
     /** 
      * Tick the wave system to update wave state.
      * @param delta_time_ms Time elapsed since last tick in milliseconds
@@ -18,6 +19,7 @@ public:
     
 private:
     EntityManager* entity_manager_;
+    NetworkService* network_service_;
     float wave_interval_ms; // 30 seconds between waves
     float wave_delay_ms;    // 1 second delay between minions in a wave
     float elapsed_time_ms;

@@ -7,13 +7,20 @@
  * Packet type enumeration for network communication.
  */
 enum class PACKET_TYPE : uint8_t {
-    PLAYER_READY,
+    // Engine reserved packet types
     GAME_START,
     GAME_STATE,
-    SPAWN_MAP,
+    GAME_TIME,
+    MAP_SPAWN,
+    MAP_LOAD,
+    // Spawn packets
+    ENTITY_SPAWN,
+    // Update packets
     ENTITY_POSITION,
+    ENTITY_STATS,
+    // Player related packets
+    PLAYER_READY,
     PLAYER_DISCONNECT,
-    MINION_STATE,  // Contains all active minion positions and states
 };
 
 /**
@@ -31,8 +38,10 @@ public:
         switch (type) {
             case PACKET_TYPE::PLAYER_READY:
                 return 2;  // type (1) + ready_status (1)
-            case PACKET_TYPE::MINION_STATE:
-                return 5;  // type (1) + minion_count (4)
+            case PACKET_TYPE::ENTITY_POSITION:
+                return 13;  // type (1) + entity_id (4) + position_x (4) + position_y (4)
+            case PACKET_TYPE::ENTITY_SPAWN:
+                return 19;  // type (1) + entity_id (4) + position_x (4) + position_y (4) + team_id (1) + type_string_length (4) + type_string_data (variable)
             case PACKET_TYPE::GAME_START:
             case PACKET_TYPE::GAME_STATE:
             case PACKET_TYPE::PLAYER_DISCONNECT:

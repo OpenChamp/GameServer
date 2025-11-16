@@ -1,12 +1,16 @@
 #include <log.hpp>
 #include "wave_system.hpp"
 #include "entity_manager.hpp"
+#include "serialization_system.hpp"
+#include "services/network_service.hpp"
+#include <components/movement.hpp>
 #include <vector>
 #include <string>
 
-WaveSystem::WaveSystem(EntityManager* entity_manager) {
+WaveSystem::WaveSystem(EntityManager* entity_manager, NetworkService* network_service) {
     // Constructor can initialize state if needed
     entity_manager_ = entity_manager;
+    network_service_ = network_service;
     wave_interval_ms = 30000.0f; // 30 seconds
     wave_delay_ms = 1000.0f;     // 1 second
     elapsed_time_ms = 0.0f;
@@ -77,6 +81,18 @@ bool WaveSystem::create_minion(const std::string& minion_template, uint8_t team_
     if (stats) {
         stats->team_id = team_id;
     }
+    
+    // Broadcast minion spawn to all clients
+    if (network_service_) {
+        Movement* move_comp = minion.get_component<Movement>();
+        if (move_comp) {
+            std::vector<uint8_t> packet = SerializationSystem::serialize_entity_spawn(minion.get_id(), move_comp->position, team_id, minion_template);
+            network_service_->broadcast_packet(packet);
+        } else {
+            LOG_WARN("Spawned minion %u has no Movement component", minion.get_id());
+        }
+    }
+    
     LOG_INFO("Spawned minion with ID %u for team %d", minion.get_id(), team_id);
     return true;
 }
