@@ -7,6 +7,7 @@
 
 #include <enet.h>
 
+#include <systems/math.hpp>
 #include <systems/packet_validator.hpp>
 #include "components/errors.hpp"
 

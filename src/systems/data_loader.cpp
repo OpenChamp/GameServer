@@ -50,6 +50,12 @@ EntityTemplate DataLoader::load_entity_template(std::string file_name) {
         LOAD_ATTRIBUTE(movementNode, movement, move_speed, float)
         temp.component_templates.push_back(movement);
     }
+    
+    pugi::xml_node pathfindingNode = rootNode.child("pathfinding");
+    if(pathfindingNode != NULL) {
+        std::shared_ptr<PathfindingComponent> pathfinding = std::make_shared<PathfindingComponent>();
+        temp.component_templates.push_back(pathfinding);
+    }
 
     pugi::xml_node statsNode = rootNode.child("stats");
     if(statsNode != NULL) {

@@ -1,4 +1,5 @@
 #include <services/navigation_service.hpp>
+#include <services/astar_pathfinding.hpp>
 
 #include <thread>
 #include <mutex>
@@ -63,10 +64,29 @@ struct NavigationService::NavServiceBackend {
             // the lock is unlocked, take your time
             // =================================================================
 
-            // TODO actually implement pathing lol - ploinky 14/11/2025
+            // Perform A* pathfinding on the 2D navmesh
+            Vec2 start_2d(req.current_position.x, req.current_position.z);
+            Vec2 goal_2d(req.destination.x, req.destination.z);
+
+            // Create local copies of the navmesh data for thread-safe pathfinding
+            std::vector<Vec2> navmesh_vertices = this->map.vertices;
+            std::vector<std::vector<uint32_t>> navmesh_polygons = this->map.polygons;
+
+            std::vector<Vec2> path_2d = AStarPathfinder::FindPath(
+                start_2d,
+                goal_2d,
+                navmesh_vertices,
+                navmesh_polygons,
+                req.entity_pathing_radius
+            );
+
+            // Convert the 2D path back to 3D (keeping Y from destination for now)
             PathResult res = PathResult();
             res.entity_id = req.entity_id;
-            res.path = {};
+            res.path.reserve(path_2d.size());
+            for (const auto& waypoint_2d : path_2d) {
+                res.path.push_back(Vec3(waypoint_2d.x, req.destination.y, waypoint_2d.y));
+            }
 
             // we have our result, so let's hand it back to the main thread now
             if(!lock.try_lock()) {

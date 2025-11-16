@@ -26,6 +26,14 @@ public:
      */
     explicit Entity(EntityID id) : id_(id) {}
     
+    // Prevent copying (components_ contains non-copyable unique_ptr)
+    Entity(const Entity&) = delete;
+    Entity& operator=(const Entity&) = delete;
+    
+    // Allow moving
+    Entity(Entity&&) = default;
+    Entity& operator=(Entity&&) = default;
+    
     /**
      * Get the entity's unique ID.
      * @return Entity ID

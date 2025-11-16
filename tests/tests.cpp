@@ -61,7 +61,7 @@ TEST(component_addition) {
     Entity& entity = manager.create_entity();
     
     auto movement = std::make_unique<Movement>();
-    movement->position = Vec3(1.0f, 2.0f, 3.0f);
+    movement->position = Vec2(1.0f, 3.0f);
     entity.add_component(std::move(movement));
     
     ASSERT_TRUE(entity.has_component<Movement>());
@@ -72,7 +72,7 @@ TEST(component_retrieval) {
     Entity& entity = manager.create_entity();
     
     auto movement = std::make_unique<Movement>();
-    movement->position = Vec3(5.0f, 10.0f, 15.0f);
+    movement->position = Vec2(5.0f, 15.0f);
     entity.add_component(std::move(movement));
     
     Movement* retrieved = entity.get_component<Movement>();

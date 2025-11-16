@@ -45,6 +45,9 @@ struct Stats : public Component {
     float omni_vamp = 0.0f; // Percentage of damage dealt returned as health
     float leech = 0.0f; // Percentage of damage dealt returned as mana
     float vision_range = 1.0f;
+
+    // === Team & Faction ===
+    uint8_t team_id = 0; // [0 = Neutral, 1 = Team 1, 2 = Team 2] -- cmkrist 15/11/2025
     
     COMPONENT_TYPE_ID(Stats, 2002)
 };

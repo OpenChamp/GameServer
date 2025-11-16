@@ -50,6 +50,7 @@ set(GAMESERVER_SOURCES
 	src/main.cpp
 	# Services
 	src/services/navigation_service.cpp
+	src/services/astar_pathfinding.cpp
 	# Systems
 	src/systems/combat_system.cpp
 	src/services/network_service.cpp
@@ -59,6 +60,7 @@ set(GAMESERVER_SOURCES
 	src/systems/combat_system.cpp
 	src/systems/movement_system.cpp
 	src/systems/serialization_system.cpp
+	src/systems/wave_system.cpp
 )
 
 # Header files (for IDE organization)
@@ -76,12 +78,14 @@ set(GAMESERVER_HEADERS
 	src/components/map.hpp
 	src/components/navmesh.hpp
 	src/services/navigation_service.hpp
+	src/services/astar_pathfinding.hpp
 	src/services/network_service.hpp
 	src/systems/data_loader.hpp
 	src/systems/map_system.hpp
 	src/systems/combat_system.hpp
 	src/systems/movement_system.hpp
 	src/systems/serialization_system.hpp
+	src/systems/wave_system.hpp
 )
 
 set(LIBRARY_SOURCES
