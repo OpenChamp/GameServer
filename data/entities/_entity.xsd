@@ -49,6 +49,9 @@
                     <xs:attribute name="omni_vamp" type="xs:float" use="optional" />
                     <xs:attribute name="leech" type="xs:float" use="optional" />
                     <xs:attribute name="vision_range" type="xs:float" use="optional" />
+
+                    <!-- Team Stats -->
+                    <xs:attribute name="team_id" type="xs:int" use="optional" />
                 </xs:complexType>
             </xs:element>
         </xs:sequence>
