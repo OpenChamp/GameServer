@@ -11,7 +11,6 @@
 #include <vector>
 
 
-
 std::optional<Map> MapSystem::load_map(const std::optional<std::string>& file_path) {
     std::string default_map_dir = "./data/maps/"; // STATIC -- cmkrist 15/11/2025
     // Check for default map directory, if missing error out and die
@@ -38,8 +37,8 @@ std::optional<Map> MapSystem::load_map(const std::optional<std::string>& file_pa
             if (std::filesystem::exists(actual_file_path)) {
                 LOG_INFO("Loading map from specified map name: %s", file_path->c_str());
             } else {
-                actual_file_path.clear();
                 LOG_ERROR("Map file for specified map name does not exist: %s", actual_file_path.c_str());
+                actual_file_path.clear();
             }
         }
     }
@@ -79,6 +78,10 @@ std::optional<Map> MapSystem::load_map(const std::optional<std::string>& file_pa
         LOG_ERROR("Failed to parse navmesh data from map file: %s", actual_file_path.c_str());
         return std::nullopt;
     }
+
+    // Parse spawnpoints (not used yet) -- cmkrist 16/11/2025
+    std::vector<SpawnPoint> spawnpoints = parse_spawnpoints_from_tscn(file_content);
+    LOG_INFO("Parsed %zu spawnpoints from map file", spawnpoints.size());
     
     // Add Map component
     Map map;
@@ -145,10 +148,111 @@ MapSystem::NavMeshData MapSystem::parse_navmesh_from_tscn(const std::string& fil
     return data;
 }
 
+std::vector<MapSystem::SpawnPoint> MapSystem::parse_spawnpoints_from_tscn(const std::string& file_content) {
+    std::vector<SpawnPoint> spawnpoints;
+    
+    // Find all SpawnPoint nodes
+    size_t pos = 0;
+    while (true) {
+        
+        size_t spawn_pos = file_content.find("[node name=\"", pos);
+        if (spawn_pos == std::string::npos) break;
+
+        // Check type
+        size_t type_pos = file_content.find("type=\"Marker3D\"", spawn_pos);
+        if (type_pos == std::string::npos || type_pos > file_content.find("\n", spawn_pos)) {
+            pos = spawn_pos + 1;
+            continue; // Not a Marker3D node
+        }
+
+        // Check groups for team and spawn type
+        size_t groups_pos = file_content.find("groups = [", spawn_pos);
+        if (groups_pos == std::string::npos || groups_pos > file_content.find("\n", spawn_pos)) {
+            pos = spawn_pos + 1;
+            continue; // No groups found
+        }
+        size_t groups_end = file_content.find("]", groups_pos);
+        
+        // Create spawnpoint before parsing details
+        SpawnPoint sp;
+
+        std::string groups_str = file_content.substr(groups_pos, groups_end - groups_pos);
+        bool is_spawnpoint = false;
+        
+        // Check for spawn type
+        for (const auto& [spawn_type_str, spawn_type_enum] : spawn_groups) {
+            if (groups_str.find(spawn_type_str) != std::string::npos) {
+                is_spawnpoint = true;
+                sp.spawn_type = spawn_type_enum;
+                break;
+            }
+        }
+
+        // Check for team ID (legacy: team_id appears as a group string)
+        // TODO: Verify team ID parsing logic - currently only checks spawn_groups for team assignment
+        for (const auto& [group_name, team_enum] : spawn_groups) {
+            if (groups_str.find(group_name) != std::string::npos) {
+                sp.team_id = team_enum;
+                break;
+            }
+        }
+
+        if (!is_spawnpoint) {
+            pos = spawn_pos + 1;
+            continue; // Not a spawnpoint
+        }
+        
+        
+        // Parse position
+        std::string position_string = "position = Vector3(";
+        size_t position_pos = file_content.find(position_string, spawn_pos);
+        if (position_pos != std::string::npos) {
+            position_pos += position_string.length();
+            size_t position_end = file_content.find(")", position_pos);
+            if (position_end != std::string::npos) {
+                std::string position_data = file_content.substr(position_pos, position_end - position_pos);
+                std::vector<float> coords;
+                size_t coord_pos = 0;
+                while (coord_pos < position_data.length()) {
+                    // Skip whitespace and commas
+                    while (coord_pos < position_data.length() && (std::isspace(position_data[coord_pos]) || position_data[coord_pos] == ',')) {
+                        coord_pos++;
+                    }
+                    
+                    if (coord_pos >= position_data.length()) break;
+                    
+                    // Find end of number
+                    size_t start = coord_pos;
+                    while (coord_pos < position_data.length() && (std::isdigit(position_data[coord_pos]) || position_data[coord_pos] == '-' || position_data[coord_pos] == '.')) {
+                        coord_pos++;
+                    }
+                    
+                    std::string num_str = position_data.substr(start, coord_pos - start);
+                    if (!num_str.empty()) {
+                        try {
+                            coords.push_back(std::stof(num_str));
+                        } catch (...) {
+                            LOG_WARN("Failed to parse spawnpoint coordinate: %s", num_str.c_str());
+                        }
+                    }
+                }
+                
+                if (coords.size() >= 3) {
+                    sp.position = Vec2(coords[0], coords[2]);
+                }
+            }
+        }
+        
+        spawnpoints.push_back(sp);
+        pos = spawn_pos + 1;
+    }
+    
+    return spawnpoints;
+}
+
 std::vector<Vec2> MapSystem::parse_vertices_to_2D(const std::string& vertices_data_raw) {
     std::vector<Vec2> vertices;
     std::vector<float> coords;
-    std::vector<Vec2> map_size = {Vec2(0.0f, 0.0f), Vec2(0.0f, 0.0f)};
     size_t pos = 0;
     // Add all vertices to coords
     while (pos < vertices_data_raw.length()) {
@@ -184,7 +288,7 @@ std::vector<Vec2> MapSystem::parse_vertices_to_2D(const std::string& vertices_da
         }
     }
     
-    // Parse Vec2 from Vec3 data
+    // Parse Vec2 from Vec3 data (expects X, Y, Z coordinates, we use X and Z)
     for (size_t i = 0; i + 2 < coords.size(); i += 3) {
         vertices.push_back(Vec2(coords[i], coords[i + 2]));
     }
@@ -196,13 +300,14 @@ std::vector<std::vector<uint32_t>> MapSystem::parse_polygons(const std::string& 
     std::vector<std::vector<uint32_t>> polygons;
     
     // Parse PackedInt32Array(...) entries
+    constexpr size_t PACKED_ARRAY_PREFIX_LEN = 17; // Length of "PackedInt32Array("
     size_t pos = 0;
     while (pos < polygons_data_raw.length()) {
         // Find start of PackedInt32Array
         size_t array_start = polygons_data_raw.find("PackedInt32Array(", pos);
         if (array_start == std::string::npos) break;
         
-        array_start += 17; // Skip "PackedInt32Array("
+        array_start += PACKED_ARRAY_PREFIX_LEN;
         size_t array_end = polygons_data_raw.find(")", array_start);
         if (array_end == std::string::npos) break;
 
@@ -306,10 +411,10 @@ Vec2 MapSystem::calculate_size_from_vertices(const std::vector<Vec2>& vertices) 
     float max_y = vertices[0].y;
     
     for (const auto& v : vertices) {
-        min_x = (min_x < v.x) ? min_x : v.x;
-        max_x = (max_x > v.x) ? max_x : v.x;
-        min_y = (min_y < v.y) ? min_y : v.y;
-        max_y = (max_y > v.y) ? max_y : v.y;
+        min_x = std::min(min_x, v.x);
+        max_x = std::max(max_x, v.x);
+        min_y = std::min(min_y, v.y);
+        max_y = std::max(max_y, v.y);
     }
     
     return Vec2(max_x - min_x, max_y - min_y);

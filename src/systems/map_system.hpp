@@ -9,6 +9,22 @@
 #include <cstring>
 
 #include <components/map.hpp>
+
+enum spawn_type : uint8_t {
+        PLAYER_SPAWN,
+        MINION_SPAWN,
+        MONSTER_SPAWN,
+        CAMP_SPAWN,
+        OBJECTIVE_SPAWN
+};
+
+const std::unordered_map<std::string, spawn_type> spawn_groups = {
+    {"player_spawn", spawn_type::PLAYER_SPAWN},
+    {"minion_spawn", spawn_type::MINION_SPAWN},
+    {"monster_spawn", spawn_type::MONSTER_SPAWN},
+    {"camp_spawn", spawn_type::CAMP_SPAWN},
+    {"objective_spawn", spawn_type::OBJECTIVE_SPAWN}
+};
 /**
  * System to load and manage game maps from Godot tscn files.
  * Parses navmesh data and provides it to clients.
@@ -21,6 +37,12 @@ public:
     struct NavMeshData {
         std::vector<Vec2> vertices;
         std::vector<std::vector<uint32_t>> polygons;
+    };
+
+    struct SpawnPoint {
+        Vec2 position;
+        uint8_t team_id;
+        spawn_type spawn_type;
     };
     
     /**
@@ -57,6 +79,7 @@ private:
      * @return NavMeshData with vertices and polygons, empty if parsing failed
      */
     static NavMeshData parse_navmesh_from_tscn(const std::string& file_content);
+    static std::vector<SpawnPoint> parse_spawnpoints_from_tscn(const std::string& file_content);
     static std::vector<Vec2> parse_vertices_to_2D(const std::string& vertices_str);
     static std::vector<std::vector<uint32_t>> parse_polygons(const std::string& polygons_str);
     static Vec2 calculate_size_from_vertices(const std::vector<Vec2>& vertices);
