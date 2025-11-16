@@ -40,6 +40,8 @@ ERROR_CODE NetworkService::start_server() {
         LOG_ERROR("Failed to initialize ENet");
         return ERROR_CODE::ERROR_ENET_INIT_FAILED;
     }
+
+    backend_ = std::make_unique<NetworkService::NetworkBackend>();
     
     ENetAddress address;
     memset(&address, 0, sizeof(ENetAddress));
