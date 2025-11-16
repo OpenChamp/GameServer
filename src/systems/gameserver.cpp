@@ -17,11 +17,7 @@ GameServer::GameServer(int port, int max_clients, const std::string& map_path)
     , current_state_(GAME_STATE::PREGAME)
     , last_minion_broadcast_(std::chrono::high_resolution_clock::now())
     , network_service_(NetworkService(port, max_clients)) {
-    network_service_.on_client_connected = [this](std::string client_id) { on_client_connect(client_id); };
-    network_service_.on_client_disconnected = [this](std::string client_id) { on_client_disconnect(client_id); };
-    network_service_.on_packet_received = [this](std::string client_id, const uint8_t* data, size_t length) { on_packet_received(client_id, data, length); };
-    network_service_.start_server();
-        
+
 }
 
 GameServer::~GameServer() {
@@ -38,13 +34,17 @@ ERROR_CODE GameServer::initialize() {
         LOG_ERROR("Failed to load map");
         return ERROR_CODE::ERROR_ENET_CREATION_FAILED;
     }
-
     map_pointer_ = std::make_unique<Map>(std::move(map_opt.value()));
 
     // Initialize Navigation
     navigation_service_ = std::make_unique<NavigationService>(std::move(map_opt.value()));
 
-    return ERROR_CODE::ERROR_NONE;
+    // Initialize Network
+    network_service_.on_client_connected = [this](std::string client_id) { on_client_connect(client_id); };
+    network_service_.on_client_disconnected = [this](std::string client_id) { on_client_disconnect(client_id); };
+    network_service_.on_packet_received = [this](std::string client_id, const uint8_t* data, size_t length) { on_packet_received(client_id, data, length); };
+    ERROR_CODE net_result = network_service_.start_server();
+    return std::max<ERROR_CODE>(ERROR_CODE::ERROR_NONE, net_result);
 }
 
 void GameServer::run() {
