@@ -2,7 +2,6 @@
 
 #include <vector>
 #include <cstdint>
-#include <enet.h>
 #include "entity_manager.hpp"
 
 /**
@@ -37,9 +36,9 @@ public:
      *     [+20]    - state (uint8_t)
      * 
      * @param entity_manager Reference to entity manager
-     * @return ENetPacket with serialized minion data, or nullptr if no minions
+     * @return Vector with serialized minion data, or empty vector if no minions
      */
-    static ENetPacket* serialize_minions(EntityManager& entity_manager);
+    static std::vector<uint8_t> serialize_minions(EntityManager& entity_manager);
     
     /**
      * Get all active minions from entity manager.

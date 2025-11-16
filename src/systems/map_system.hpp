@@ -7,7 +7,6 @@
 #include <string>
 #include <vector>
 #include <cstring>
-#include <enet.h>
 
 #include <components/map.hpp>
 /**
@@ -47,9 +46,9 @@ public:
      *   [...]    - polygons (variable length)
      * 
      * @param map_entity The map entity to serialize
-     * @return ENetPacket with serialized map data, or nullptr on failure
+     * @return Vector with serialized map data, or empty vector on failure
      */
-    static ENetPacket* serialize_map(Entity* map_entity);
+    static std::vector<uint8_t> serialize_map(Entity* map_entity);
 private:
     /**
      * Parse a Godot tscn file and extract navmesh data.

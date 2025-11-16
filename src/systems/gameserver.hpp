@@ -6,12 +6,9 @@
 #include <memory>
 #include <atomic>
 #include <chrono>
-#include <enet.h>
-// Libraries
-#include "libs/frame_timer.h"
-// Components
 #include "components/errors.hpp"
 #include "components/game_state.hpp"
+#include "libs/frame_timer.h"
 // Entities
 #include "entities/player.hpp"
 // Systems
@@ -23,7 +20,7 @@
 #include "serialization_system.hpp"
 // Services
 #include "services/navigation_service.hpp"
-
+#include "services/network_service.hpp"
 /**
  * Central GameServer class encapsulating all server state and logic.
  * Replaces global state management with proper OOP encapsulation.
@@ -111,10 +108,9 @@ public:
     
 private:
     // Network configuration
-    int port_;
     int max_clients_;
     std::string map_path_;
-    ENetHost* enet_server_;
+    NetworkService network_service_;
 
     // Server configuration
 
@@ -142,24 +138,31 @@ private:
     
     /**
      * Handle a new client connection.
-     * @param event ENet event containing peer information
+     * @param client_id The client ID of the connected peer
      */
-    void on_client_connect(ENetEvent& event);
+    void on_client_connect(std::string client_id);
     
     /**
+     * Handle an incoming packet.
+     * @param client_id The client ID of the peer that sent the packet
+     * @param packet The packet the is incoming
+     */
+    void on_packet_received(std::string client_id, const uint8_t* data, size_t length);
+
+    /**
      * Handle player ready status packet.
-     * @param event ENet event containing peer information
+     * @param client_id ID of the client that has submitted the status
      * @param packet_data Pointer to packet data
      * @param packet_length Length of packet data
      * @return true if handled successfully
      */
-    bool handle_player_ready_packet(ENetEvent& event, const uint8_t* packet_data, size_t packet_length);
+    bool handle_player_ready_packet(std::string client_id, const uint8_t* packet_data, size_t packet_length);
     
     /**
      * Handle client disconnect.
-     * @param event ENet event containing peer information
+     * @param client_id ID of the client that has disconnected
      */
-    void on_client_disconnect(ENetEvent& event);
+    void on_client_disconnect(std::string client_id);
     
     /**
      * Broadcast player list to all connected clients.
@@ -171,13 +174,6 @@ private:
      * Rate-limited to avoid excessive network traffic.
      */
     void broadcast_minion_states();
-
-    /**
-     * Send a packet of specified type to a peer.
-     * @param packet_type Type of packet to send
-     * @param peer ENet peer to send the packet to
-     */
-    void send_packet(PACKET_TYPE packet_type, ENetPeer* peer);
     
     /**
      * Validate state transition rules.
