@@ -81,7 +81,7 @@ void NetworkService::disconnect() {
         enet_host_destroy(backend_->enet_server_);
         backend_->enet_server_ = nullptr;
     }
-    is_connected_ = true;
+    is_connected_ = false;
 }
 
 bool NetworkService::run_callbacks() {
