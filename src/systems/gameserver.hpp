@@ -8,7 +8,9 @@
 #include <chrono>
 #include "components/errors.hpp"
 #include "components/game_state.hpp"
+#include "components/map.hpp"
 #include "libs/frame_timer.h"
+
 // Entities
 #include "entities/player.hpp"
 // Systems
@@ -109,6 +111,7 @@ private:
     // Network configuration
     int max_clients_;
     std::string map_path_;
+    Map* map_pointer_;
     NetworkService network_service_;
 
     // Server configuration

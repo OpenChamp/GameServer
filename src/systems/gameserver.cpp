@@ -6,11 +6,13 @@
 #include <algorithm>
 #include <cstdio>
 #include <chrono>
+#include <vector>
 
 GameServer::GameServer(int port, int max_clients, const std::string& map_path)
     : max_clients_(max_clients)
     , shutdown_requested_(false)
     , map_path_(map_path)
+    , map_pointer_(nullptr)
     , navigation_service_(nullptr)
     , current_state_(GAME_STATE::PREGAME)
     , last_minion_broadcast_(std::chrono::high_resolution_clock::now())
@@ -37,13 +39,11 @@ ERROR_CODE GameServer::initialize() {
         return ERROR_CODE::ERROR_ENET_CREATION_FAILED;
     }
 
+    map_pointer_ = new Map(std::move(map_opt.value()));
+
     // Initialize Navigation
     navigation_service_ = std::make_unique<NavigationService>(std::move(map_opt.value()));
 
-    // minion_spawner_ = std::make_unique<MinionSpawnerSystem>();
-    // minion_movement_ = std::make_unique<MinionMovementSystem>();
-    // minion_damage_ = std::make_unique<MinionDamageSystem>();
-    
     return ERROR_CODE::ERROR_NONE;
 }
 
@@ -58,14 +58,6 @@ void GameServer::run() {
 
         if(network_service_.is_connected()) {
             network_service_.run_callbacks();
-        }
-        
-        // Update ECS systems
-        if (map_entity_) {
-            
-
-            
-            // Broadcast minion states to all clients (rate-limited)
         }
     }
     
@@ -137,10 +129,8 @@ void GameServer::on_client_connect(std::string client_id) {
     auto result = players_.emplace(client_id, new_player);
     
     // Tell the player which map to load
-    if (map_entity_) {
-        std::vector<uint8_t> map_packet = MapSystem::serialize_map(map_entity_);
-        network_service_.send_packet(map_packet, client_id);
-        LOG_INFO("Sent map data to client %s", client_id.c_str());
+    if (map_pointer_) {
+        network_service_.send_packet(PACKET_TYPE::SPAWN_MAP, map_pointer_->name, client_id);
     }
 
     LOG_INFO("Player %s added. Total players: %zu/%d",
