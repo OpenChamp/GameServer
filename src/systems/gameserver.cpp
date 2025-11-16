@@ -8,6 +8,8 @@
 #include <chrono>
 #include <vector>
 
+#include <systems/wave_system.hpp>
+
 GameServer::GameServer(int port, int max_clients, const std::string& map_path)
     : max_clients_(max_clients)
     , shutdown_requested_(false)
@@ -16,7 +18,8 @@ GameServer::GameServer(int port, int max_clients, const std::string& map_path)
     , navigation_service_(nullptr)
     , current_state_(GAME_STATE::PREGAME)
     , last_minion_broadcast_(std::chrono::high_resolution_clock::now())
-    , network_service_(NetworkService(port, max_clients)) {
+    , network_service_(NetworkService(port, max_clients))
+    , wave_system_(nullptr) {
 
 }
 
@@ -35,10 +38,10 @@ ERROR_CODE GameServer::initialize() {
         return ERROR_CODE::ERROR_ENET_CREATION_FAILED;
     }
     map_pointer_ = std::make_unique<Map>(std::move(map_opt.value()));
-
     // Initialize Navigation
     navigation_service_ = std::make_unique<NavigationService>(std::move(map_opt.value()));
-
+    // Initialize Wave System
+    wave_system_ = std::make_unique<WaveSystem>(&entity_manager_);
     // Initialize Network
     network_service_.on_client_connected = [this](std::string client_id) { on_client_connect(client_id); };
     network_service_.on_client_disconnected = [this](std::string client_id) { on_client_disconnect(client_id); };
@@ -51,17 +54,23 @@ void GameServer::run() {
     LOG_INFO("Starting server main loop");
     
     while (!shutdown_requested_) {
+        // Service network events
+        network_service_.is_connected() ? network_service_.run_callbacks() : void();
         // Frame timing
         if(!frame_timer_.is_frame()) {
             continue;
         }
+        GameServer::frame_tick();
 
-        if(network_service_.is_connected()) {
-            network_service_.run_callbacks();
-        }
+        
     }
     
     LOG_INFO("Server main loop ended");
+}
+
+void GameServer::frame_tick() {
+    float delta_time_ms = frame_timer_.frame_duration_in_ms();
+    wave_system_->tick(delta_time_ms);
 }
 
 void GameServer::request_shutdown() {
@@ -198,6 +207,7 @@ bool GameServer::handle_player_ready_packet(std::string client_id, const uint8_t
         if(try_transition_state(GAME_STATE::ONGOING)) {
             // Notify all players that the game is starting
             network_service_.broadcast_packet(PACKET_TYPE::GAME_START);
+            GameServer::run();
         }
     }
     

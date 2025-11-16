@@ -59,6 +59,7 @@ set(GAMESERVER_SOURCES
 	src/systems/combat_system.cpp
 	src/systems/movement_system.cpp
 	src/systems/serialization_system.cpp
+	src/systems/wave_system.cpp
 )
 
 # Header files (for IDE organization)
@@ -82,6 +83,7 @@ set(GAMESERVER_HEADERS
 	src/systems/combat_system.hpp
 	src/systems/movement_system.hpp
 	src/systems/serialization_system.hpp
+	src/systems/wave_system.hpp
 )
 
 set(LIBRARY_SOURCES

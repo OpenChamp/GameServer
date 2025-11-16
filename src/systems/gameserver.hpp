@@ -14,12 +14,12 @@
 // Entities
 #include "entities/player.hpp"
 // Systems
-#include "map_system.hpp"
 #include "combat_system.hpp"
-#include "movement_system.hpp"
-#include "spawner_system.hpp"
 #include "entity_manager.hpp"
+#include "map_system.hpp"
+#include "movement_system.hpp"
 #include "serialization_system.hpp"
+#include "wave_system.hpp"
 // Services
 #include "services/navigation_service.hpp"
 #include "services/network_service.hpp"
@@ -113,6 +113,8 @@ private:
     std::string map_path_;
     std::unique_ptr<Map> map_pointer_;
     NetworkService network_service_;
+    // Systems
+    std::unique_ptr<WaveSystem> wave_system_;
 
     // Server configuration
 
@@ -166,6 +168,10 @@ private:
      */
     void on_client_disconnect(std::string client_id);
     
+    /**
+     * Perform a single frame tick: process game logic, update states, and broadcast as needed.
+     */
+    void frame_tick();
     /**
      * Broadcast player list to all connected clients.
      */
