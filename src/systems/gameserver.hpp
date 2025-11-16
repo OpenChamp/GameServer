@@ -50,8 +50,7 @@ public:
      * @param timeout_ms Milliseconds to wait for an event
      * @return true if event was processed, false if timeout
      */
-    bool service_network(unsigned int timeout_ms = 1000);
-    
+        
     /**
      * Main server loop. Processes events until shutdown is requested.
      * Should be called from main() after initialize().

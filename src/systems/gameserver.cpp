@@ -51,8 +51,6 @@ void GameServer::run() {
     LOG_INFO("Starting server main loop");
     
     while (!shutdown_requested_) {
-        // Service network events (non-blocking)
-        service_network(0);
         // Frame timing
         if(!frame_timer_.is_frame()) {
             continue;
