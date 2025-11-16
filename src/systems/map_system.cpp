@@ -82,7 +82,7 @@ std::optional<Map> MapSystem::load_map(const std::optional<std::string>& file_pa
     
     // Add Map component
     Map map;
-    int final_slash_index = actual_file_path.find_last_of("/\\");
+    size_t final_slash_index = actual_file_path.find_last_of("/\\");
     // Get name from file
     map.name = actual_file_path.substr(final_slash_index + 1, actual_file_path.find_last_of('.') - final_slash_index - 1);
     map.vertices = navmesh_data.vertices;

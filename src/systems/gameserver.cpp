@@ -195,7 +195,10 @@ bool GameServer::handle_player_ready_packet(std::string client_id, const uint8_t
         is_lobby_ready()) {
         
         LOG_INFO("All players ready! Transitioning to ONGOING state");
-        try_transition_state(GAME_STATE::ONGOING);
+        if(try_transition_state(GAME_STATE::ONGOING)) {
+            // Notify all players that the game is starting
+            network_service_.broadcast_packet(PACKET_TYPE::GAME_START);
+        }
     }
     
     broadcast_player_list();
