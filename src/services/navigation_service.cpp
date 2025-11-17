@@ -87,6 +87,13 @@ struct NavigationService::NavServiceBackend {
             for (const auto& waypoint_2d : path_2d) {
                 res.path.push_back(Vec3(waypoint_2d.x, req.destination.y, waypoint_2d.y));
             }
+            
+            if (res.path.empty()) {
+                LOG_WARN("Navigation: Entity %u path from (%.1f, %.1f) to (%.1f, %.1f) returned EMPTY PATH", 
+                         req.entity_id, start_2d.x, start_2d.y, goal_2d.x, goal_2d.y);
+            } else {
+                LOG_DEBUG("Navigation: Entity %u path with %zu waypoints", req.entity_id, res.path.size());
+            }
 
             // we have our result, so let's hand it back to the main thread now
             if(!lock.try_lock()) {

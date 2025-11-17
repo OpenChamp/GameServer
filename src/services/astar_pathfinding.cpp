@@ -1,4 +1,5 @@
 #include <services/astar_pathfinding.hpp>
+#include <log.hpp>
 
 std::vector<Vec2> AStarPathfinder::FindPath(
     const Vec2& start_pos,
@@ -14,6 +15,11 @@ std::vector<Vec2> AStarPathfinder::FindPath(
 
     if (start_pos == goal_pos) {
         return {start_pos};
+    }
+
+    // If start and goal are very close, return direct path
+    if (start_pos.distance_to(goal_pos) < 1.0f) {
+        return {start_pos, goal_pos};
     }
 
     // Find which polygon contains the start position
@@ -45,6 +51,9 @@ std::vector<Vec2> AStarPathfinder::FindPath(
             break;
         }
     }
+
+    LOG_INFO("A*: start_polygon=%d, goal_polygon=%d for path (%.1f, %.1f) -> (%.1f, %.1f)", 
+             start_polygon, goal_polygon, start_pos.x, start_pos.y, goal_pos.x, goal_pos.y);
 
     // If either position is not in a polygon, try to find the closest polygon
     if (start_polygon == -1) {
@@ -90,7 +99,9 @@ std::vector<Vec2> AStarPathfinder::FindPath(
     }
 
     if (start_polygon == -1 || goal_polygon == -1) {
-        return {}; // No valid path
+        // Fallback: return direct path since we couldn't locate in polygons
+        // This can happen if spawnpoints are outside the navmesh or on edges
+        return {start_pos, goal_pos};
     }
 
     // A* algorithm on polygon graph
@@ -207,7 +218,9 @@ std::vector<Vec2> AStarPathfinder::FindPath(
         }
     }
 
-    return {}; // No path found
+    // No path found via A*, return direct path as fallback
+    // This ensures minions can at least move in the right direction
+    return {start_pos, goal_pos};
 }
 
 bool AStarPathfinder::PointInPolygon(const Vec2& point, const std::vector<Vec2>& polygon_vertices) {
@@ -380,6 +393,10 @@ std::vector<Vec2> AStarPathfinder::SmoothPath(
     const std::vector<std::vector<uint32_t>>& polygons,
     float entity_radius
 ) {
+    if (raw_path.size() < 2) {
+        return raw_path;
+    }
+    
     if (raw_path.size() < 3) {
         return raw_path;
     }
