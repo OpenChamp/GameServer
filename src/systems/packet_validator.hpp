@@ -6,11 +6,14 @@
 /**
  * Packet type enumeration for network communication.
  */
+// TODO: Move packet types to xml definition for synchronization with client
+// For now, update the NetworkManager in the client project as well.
 enum class PACKET_TYPE : uint8_t {
     // Engine reserved packet types
     GAME_START,
     GAME_STATE,
     GAME_TIME,
+    LOBBY_FULL,
     MAP_SPAWN,
     MAP_LOAD,
     // Spawn packets
