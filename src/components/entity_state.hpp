@@ -1,6 +1,7 @@
 #pragma once
 
 #include "component.hpp"
+#include <systems/entity_manager.hpp>
 
 /**
  * Entity state enumeration.

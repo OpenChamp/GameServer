@@ -42,6 +42,23 @@ void NetworkSyncSystem::update(const SystemContext& ctx) {
             LOG_DEBUG("Skipping sync for entity %u (frame %u)", entity->get_id(), current_frame_);
             continue;  // No changes to sync
         }
+
+        if(is_first_sync) {
+            Vec2 spawn_position = Vec2(0, 0);
+            if(Movement* movement = entity->get_component<Movement>()) {
+                spawn_position = movement->position;
+            }
+            // TODO what to do with team if there is no stats component? - ploinky 17/11/2025
+            uint8_t team_id = 0;
+            if(Stats* stats = entity->get_component<Stats>()) {
+                team_id = stats->team_id;
+            }
+            std::string template_id = "";
+            if(TemplateComponent* templateComponent = entity->get_component<TemplateComponent>()) {
+                template_id = templateComponent->template_id;
+            }
+            ctx.network_service->broadcast_packet(SerializationSystem::serialize_entity_spawn(entity->get_id(), spawn_position, team_id, template_id));
+        }
         
         // Serialize entity update
         bool send_full_state = force_full_sync_next_frame_ || net_comp->force_full_sync_next_frame || is_first_sync;

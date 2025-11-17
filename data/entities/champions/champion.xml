@@ -20,4 +20,6 @@
         attack_speed="0.625"
     />
     <pathfinding />
+    <network />
+    <state />
 </entity>
