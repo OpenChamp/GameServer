@@ -42,7 +42,7 @@ public:
     struct SpawnPoint {
         Vec2 position;
         uint8_t team_id;
-        spawn_type spawn_type;
+        spawn_type type;
     };
     
     /**

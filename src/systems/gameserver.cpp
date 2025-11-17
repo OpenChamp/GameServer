@@ -61,7 +61,9 @@ void GameServer::run() {
     
     while (!shutdown_requested_) {
         // Service network events
-        network_service_.is_connected() ? network_service_.run_callbacks() : void();
+        if (network_service_.is_connected()) {
+            network_service_.run_callbacks();
+        }
         // Frame timing
         if(!frame_timer_.is_frame()) {
             continue;

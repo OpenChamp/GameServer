@@ -183,7 +183,7 @@ std::vector<MapSystem::SpawnPoint> MapSystem::parse_spawnpoints_from_tscn(const 
         for (const auto& [spawn_type_str, spawn_type_enum] : spawn_groups) {
             if (groups_str.find(spawn_type_str) != std::string::npos) {
                 is_spawnpoint = true;
-                sp.spawn_type = spawn_type_enum;
+                sp.type = spawn_type_enum;
                 break;
             }
         }

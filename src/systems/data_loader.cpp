@@ -13,9 +13,9 @@
  */
 #define LOAD_ATTRIBUTE(node, comp, attr, as)                   \
     {                                                          \
-        pugi::xml_attribute loaded = ##node.attribute(#attr);  \
+        pugi::xml_attribute loaded = node.attribute(#attr);    \
         if(!loaded.empty()) {                                  \
-            ##comp->##attr = loaded.as_##as();                 \
+            comp->attr = loaded.as_##as();                     \
         }                                                      \
     }
 

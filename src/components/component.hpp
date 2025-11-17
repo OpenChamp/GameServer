@@ -32,7 +32,7 @@ public:
  *   COMPONENT_TYPE_ID(TransformComponent, 1001)
  */
 #define COMPONENT_TYPE_ID(ClassName, TypeId)                  \
-    static const uint32_t TYPE_ID = TypeId;                   \
+    static inline const uint32_t TYPE_ID = TypeId;            \
     uint32_t get_type_id() const override { return TYPE_ID; } \
     std::unique_ptr<Component> clone() const override         \
     {                                                         \

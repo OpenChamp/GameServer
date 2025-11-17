@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <limits>
 #include <optional>
+#include <cstdint>
 
 #include <systems/math.hpp>
 
