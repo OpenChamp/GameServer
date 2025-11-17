@@ -6,13 +6,11 @@
     xsi:schemaLocation="https://open-champ.com/mySchema ../_entity.xsd"
     id="melee_minion"
 >
-    <movement
-        move_speed="10.0"
-    />
+    <movement />
     <stats
         max_health="100"
         health="100"
-        move_speed="10"
+        move_speed="4.0"
     />
     <pathfinding />
     <!-- <brain
