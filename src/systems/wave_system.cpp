@@ -10,21 +10,21 @@
 #include <vector>
 #include <string>
 #include <cmath>
+#include <network_entity.hpp>
 
-WaveSystem::WaveSystem(EntityManager* entity_manager, NetworkService* network_service, NavigationService* navigation_service, const Map* map) {
+void WaveSystem::initialize(EntityManager* entity_manager, NetworkService* network_service,
+                           NavigationService* navigation_service, const Map* map) {
     entity_manager_ = entity_manager;
     network_service_ = network_service;
     navigation_service_ = navigation_service;
     map_ = map;
-    wave_interval_ms = 30000.0f;
-    wave_delay_ms = 1000.0f;
     elapsed_time_ms = 0.0f;
     last_spawn_timestamp = 0.0f;
     minion_index = 0;
     wave_index = 0;
     special_wave_offset = 5;
 
-    // TODO: Load from config file mode -- cmkrist 11/16/2025
+    // TODO: Load from config file -- cmkrist 11/16/2025
     default_minion_wave = {
         "melee_minion",
         "melee_minion",
@@ -43,50 +43,13 @@ WaveSystem::WaveSystem(EntityManager* entity_manager, NetworkService* network_se
     };
 }
 
-void WaveSystem::tick(float delta_time_ms) {
-    elapsed_time_ms += delta_time_ms;
-    // Process pathfinding results for waiting minions
-    if (navigation_service_) {
-        std::optional<PathResult> result = navigation_service_->GetResult();
-        while (result) {
-            Entity* entity = entity_manager_->get_entity(result->entity_id);
-            if (entity && entity->has_component<PathfindingComponent>()) {
-                PathfindingComponent* pathfinding = entity->get_component<PathfindingComponent>();
-                EntityStateComponent* entity_state = entity->get_component<EntityStateComponent>();
-                
-                pathfinding->waypoints = result->path;
-                pathfinding->current_waypoint_index = 0;
-                
-                if (result->path.empty()) {
-                    LOG_WARN("Minion %u received EMPTY path!", entity->get_id());
-                } else {
-                    LOG_DEBUG("Minion %u received path with %zu waypoints", 
-                             entity->get_id(), result->path.size());
-                    // Transition to MOVING state when path is received
-                    if (entity_state) {
-                        entity_state->current_state = EntityState::MOVING;
-                        entity_state->state_duration_ms = 0.0f;
-                    }
-                }
-            }
-            result = navigation_service_->GetResult();
-        }
+void WaveSystem::update(const SystemContext& ctx) {
+    if (!entity_manager_) {
+        return;
     }
     
-    // Retry pending pathfinding requests (entities waiting for paths)
-
-    if (navigation_service_) {
-        auto entities = entity_manager_->get_entities_with_component<PathfindingComponent>();
-        for (auto* entity : entities) {
-            PathfindingComponent* pathfinding = entity->get_component<PathfindingComponent>();
-            EntityStateComponent* entity_state = entity->get_component<EntityStateComponent>();
-            if (pathfinding && entity_state && 
-                entity_state->current_state == EntityState::PATHFINDING_WAITING && 
-                pathfinding->waypoints.empty()) {
-                request_minion_path(*entity, pathfinding->target_spawnpoint_id);
-            }
-        }
-    }
+    float delta_time_ms = ctx.delta_time_ms;
+    elapsed_time_ms += delta_time_ms;
     
     // Minion Spawning
     if(minion_index > 0) {
@@ -94,6 +57,7 @@ void WaveSystem::tick(float delta_time_ms) {
             LOG_INFO("Spawning new minion from wave %d, index %d", wave_index, minion_index);
             for(uint8_t team_id = 1; team_id < 3; team_id++) {
                 create_minion(
+                    ctx,
                     (wave_index % special_wave_offset == 0 ? special_minion_wave : default_minion_wave)[minion_index - 1],
                     team_id,
                     team_id - 1  // Spawn from team-specific spawnpoint
@@ -118,49 +82,55 @@ void WaveSystem::tick(float delta_time_ms) {
     }
 }
 
-bool WaveSystem::create_minion(const std::string& minion_template, uint8_t team_id, uint32_t spawn_point_id) {
-    Entity& minion = entity_manager_->create_entity_from_template(minion_template);
-    if (minion.get_id() == 0) {
+bool WaveSystem::create_minion(const SystemContext& ctx, const std::string& minion_template, uint8_t team_id, uint32_t spawn_point_id) {
+    if (!map_ || spawn_point_id >= map_->spawnpoints.size()) {
+        LOG_WARN("Invalid spawn point %u for minion", spawn_point_id);
+        return false;
+    }
+    
+    // Find spawn position
+    Vec2 spawn_pos = map_->spawnpoints[spawn_point_id];
+    
+    // Get collision radius from template entity if available
+    Entity& temp = ctx.entity_manager.create_entity_from_template(minion_template);
+    float collision_radius = 0.5f;  // Default
+    if (auto* move = temp.get_component<Movement>()) {
+        collision_radius = move->collision_radius;
+    }
+    ctx.entity_manager.destroy_entity(temp.get_id());
+    
+    // Find free spawn position
+    spawn_pos = find_free_spawn_position(spawn_point_id, collision_radius);
+    
+    // Spawn entity using SpawningSystem
+    EntityID minion_id = spawning_system_.spawn_entity_from_template(ctx, minion_template, spawn_pos, team_id);
+    if (minion_id == INVALID_ENTITY_ID) {
         LOG_ERROR("Failed to spawn minion of type %s", minion_template.c_str());
         return false;
     }
-
-    // Set team ID
-    Stats* stats = minion.get_component<Stats>();
-    if (stats) {
-        stats->team_id = team_id;
-    }
-    if (map_->spawnpoints.size() == 0) {
-        LOG_WARN("Map has no spawnpoints defined, minion spawn position may be invalid");
-    }
-    // Set Spawn
-    Movement* move_comp = minion.get_component<Movement>();
-    if (move_comp && map_ && spawn_point_id < map_->spawnpoints.size()) {
-        move_comp->position = find_free_spawn_position(spawn_point_id, move_comp->collision_radius);
+    
+    Entity* minion = ctx.entity_manager.get_entity(minion_id);
+    if (!minion) {
+        return false;
     }
     
-    // Add pathfinding component
-    auto pathfinding = std::make_unique<PathfindingComponent>();
-    minion.add_component(std::move(pathfinding));
-    
-    // Add entity state component (starts in SPAWNED state)
-    auto entity_state = std::make_unique<EntityStateComponent>();
-    entity_state->current_state = EntityState::SPAWNED;
-    minion.add_component(std::move(entity_state));
-    
-    // Request initial path to next spawnpoint (enemy spawn)
-    // TODO: Make this better -- cmkrist 16/11/2025
-    uint32_t target_spawnpoint = (spawn_point_id + 1) % (map_ ? map_->spawnpoints.size() : 2);
-    request_minion_path(minion, target_spawnpoint);
-    
-    // Notify clients of the new entity
-    // README: Not handled by NetworkSyncSystem (Manages ongoing entities only) -- cmkrist 16/11/2025
-    if (network_service_ && move_comp) {
-        std::vector<uint8_t> packet = SerializationSystem::serialize_entity_spawn(minion.get_id(), move_comp->position, team_id, minion_template);
-        network_service_->broadcast_packet(packet);
+    // Add pathfinding component if not already present
+    if (!minion->has_component<PathfindingComponent>()) {
+        auto pathfinding = std::make_unique<PathfindingComponent>();
+        minion->add_component(std::move(pathfinding));
     }
     
-    LOG_INFO("Spawned minion with ID %u for team %d from spawnpoint %u -> %u", minion.get_id(), team_id, spawn_point_id, target_spawnpoint);
+    // Add entity state component if not already present
+    if (!minion->has_component<EntityStateComponent>()) {
+        auto entity_state = std::make_unique<EntityStateComponent>();
+        entity_state->current_state = EntityState::SPAWNED;
+        minion->add_component(std::move(entity_state));
+    }
+    
+    // Request initial path to next spawnpoint
+    uint32_t target_spawnpoint = (spawn_point_id + 1) % map_->spawnpoints.size();
+    request_minion_path(*minion, target_spawnpoint);
+    
     return true;
 }
 

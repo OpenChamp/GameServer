@@ -1,5 +1,6 @@
 #include "gameserver.hpp"
 #include "packet_validator.hpp"
+#include "system_context.hpp"
 #include <optional>
 #include <log.hpp>
 #include <cstring>
@@ -11,6 +12,7 @@
 #include <components/movement.hpp>
 
 #include <systems/wave_system.hpp>
+#include <systems/map_system.hpp>
 
 GameServer::GameServer(int port, int max_clients, const std::string& map_path)
     : max_clients_(max_clients)
@@ -19,9 +21,10 @@ GameServer::GameServer(int port, int max_clients, const std::string& map_path)
     , map_pointer_(nullptr)
     , navigation_service_(nullptr)
     , current_state_(GAME_STATE::PREGAME)
-    , last_minion_broadcast_(std::chrono::high_resolution_clock::now())
     , network_service_(NetworkService(port, max_clients))
-    , wave_system_(nullptr) {
+    , player_manager_()
+    , packet_handler_(&player_manager_, &entity_manager_, &network_service_)
+    , gameplay_() {
 
 }
 
@@ -56,8 +59,8 @@ ERROR_CODE GameServer::initialize() {
         return net_result;
     }
     
-    // Initialize Wave System with navigation and map
-    wave_system_ = std::make_unique<WaveSystem>(&entity_manager_, &network_service_, navigation_service_.get(), map_pointer_.get());
+    // Initialize GameplayCoordinator with services
+    initialize_coordinator();
     
     return ERROR_CODE::ERROR_NONE;
 }
@@ -75,26 +78,23 @@ void GameServer::run() {
             continue;
         }
         GameServer::frame_tick();
-
-        
     }
-    
     LOG_INFO("Server main loop ended");
 }
 
 void GameServer::frame_tick() {
     float delta_time_ms = frame_timer_.frame_duration_in_ms();
-    float delta_time_s = delta_time_ms / 1000.0f;
     
-    // Update waves
-    wave_system_->tick(delta_time_ms);
+    // Create system context with all services
+    SystemContext ctx(entity_manager_);
+    ctx.navigation_service = navigation_service_.get();
+    ctx.network_service = &network_service_;
+    ctx.map = map_pointer_.get();
+    ctx.delta_time_ms = delta_time_ms;
     
-    // Update entity movement
-    movement_system_.update(entity_manager_, delta_time_s, navigation_service_.get(), map_pointer_.get());
-    
-    // Synchronize entity state to clients
+    // Update all game systems through coordinator
     if (current_state_ == GAME_STATE::ONGOING) {
-        network_sync_system_.update(entity_manager_, &network_service_);
+        gameplay_.update(ctx);
     }
 }
 
@@ -107,18 +107,8 @@ bool GameServer::is_shutdown_requested() const {
     return shutdown_requested_;
 }
 
-bool GameServer::is_lobby_ready() const {
-    if (players_.empty()) {
-        return false;
-    }
-    
-    for (const auto& pair : players_) {
-        if (!pair.second.is_ready) {
-            return false;
-        }
-    }
-    
-    return true;
+bool GameServer::is_lobby_ready() {
+    return player_manager_.are_all_players_ready(entity_manager_);
 }
 
 GAME_STATE GameServer::get_current_state() const {
@@ -143,7 +133,7 @@ bool GameServer::try_transition_state(GAME_STATE new_state) {
 }
 
 size_t GameServer::get_player_count() const {
-    return players_.size();
+    return player_manager_.get_player_count();
 }
 
 int GameServer::get_max_clients() const {
@@ -151,115 +141,69 @@ int GameServer::get_max_clients() const {
 }
 
 bool GameServer::is_lobby_full() const {
-    return (int)players_.size() >= max_clients_;
+    return player_manager_.is_full(max_clients_);
 }
 
 void GameServer::on_client_connect(std::string client_id) {
-    // Create player
-    Player new_player(client_id);
-    new_player.player_id = (uint32_t)players_.size();
+    // Lobby check & Map Send
     
-    // Store in map
-    auto result = players_.emplace(client_id, new_player);
-    
-    // Tell the player which map to load
+    if (player_manager_.is_full(max_clients_)) {
+        LOG_WARN("Lobby full! Rejecting new connection from %s", client_id.c_str());
+        network_service_.disconnect_client(client_id);
+        network_service_.send_packet(PACKET_TYPE::LOBBY_FULL, client_id);
+        return;
+    }
+    EntityID player_entity_id = player_manager_.on_client_connect(client_id, entity_manager_);
+
     if (map_pointer_) {
         network_service_.send_packet(PACKET_TYPE::MAP_LOAD, map_pointer_->name, client_id);
     }
 
-    LOG_INFO("Player %s added. Total players: %zu/%d",
-            client_id.c_str(), players_.size(), max_clients_);
+    LOG_INFO("Player %s added. Entity ID: %u",
+            client_id.c_str(), player_entity_id);
     
-    if (is_lobby_full()) {
-        LOG_INFO("Lobby full! Waiting for all players to be ready (%zu/%d)",
-                players_.size(), max_clients_);
+    if (player_manager_.is_full(max_clients_)) {
+        LOG_INFO("Lobby full! Waiting for all players to be ready");
     } else {
-        LOG_INFO("Waiting for more players... (%zu/%d)",
-                players_.size(), max_clients_);
+        LOG_INFO("Waiting for more players...");
     }
-    
-    broadcast_player_list();
 }
 
 void GameServer::on_packet_received(std::string client_id, const uint8_t* data, size_t length) {
-    // Validate and process packet
-    if (!PacketValidator::validate_packet(data, length)) {
-        LOG_WARN("Invalid packet received from %s", client_id.c_str());
-        return;
-    }
-    PACKET_TYPE packet_type = (PACKET_TYPE)(data[0]);
+    // Delegate to PacketHandler for processing
+    packet_handler_.handle_packet(client_id, data, length);
     
-    switch (packet_type) {
-        case PACKET_TYPE::PLAYER_READY:
-            handle_player_ready_packet(client_id, data, length);
-            break;
-            
-        default:
-            LOG_WARN("Unknown packet type: %d", (int)(packet_type));
-            break;
-    }
-        
-    // Update last activity for this player
-    auto it = players_.find(client_id);
-    if (it != players_.end()) {
-        it->second.update_activity();
-    }
-}
-
-bool GameServer::handle_player_ready_packet(std::string client_id, const uint8_t* packet_data, size_t packet_length) {
-    bool is_ready = false;
-    if (!PacketValidator::extract_ready_status(packet_data, packet_length, is_ready)) {
-        LOG_WARN("Failed to extract ready status from packet");
-        return false;
-    }
-    
-    // Update player ready status
-    auto it = players_.find(client_id);
-    if (it == players_.end()) {
-        LOG_WARN("Received ready packet from unknown player: %s", client_id.c_str());
-        return false;
-    }
-    
-    it->second.is_ready = is_ready;
-    LOG_INFO("Player %s is now %s", client_id.c_str(), is_ready ? "ready" : "not ready");
-    
-    // Check if we should transition to ONGOING
+    // Check if we should transition to ONGOING after processing packet
     if (current_state_ == GAME_STATE::PREGAME && 
-        is_lobby_full() && 
-        is_lobby_ready()) {
+        player_manager_.is_full(max_clients_) && 
+        player_manager_.are_all_players_ready(entity_manager_)) {
         
         LOG_INFO("All players ready! Transitioning to ONGOING state");
-        if(try_transition_state(GAME_STATE::ONGOING)) {
+        if (try_transition_state(GAME_STATE::ONGOING)) {
             // Notify all players that the game is starting
             network_service_.broadcast_packet(PACKET_TYPE::GAME_START);
-            GameServer::run();
         }
     }
-    
-    broadcast_player_list();
-    return true;
 }
 
 void GameServer::on_client_disconnect(std::string client_id) {
-    // Remove player from map
-    auto it = players_.find(client_id);
-    if (it != players_.end()) {
-        players_.erase(it);
-        LOG_INFO("Player removed. Remaining players: %zu", players_.size());
+    // Remove player entity via PlayerManager
+    bool was_removed = player_manager_.on_client_disconnect(client_id, entity_manager_);
+    
+    if (was_removed) {
+        LOG_INFO("Player %s disconnected", client_id.c_str());
     }
     
     // Handle state changes if game was ongoing
-    if (current_state_ == GAME_STATE::ONGOING && players_.empty()) {
+    if (current_state_ == GAME_STATE::ONGOING && player_manager_.get_player_count() == 0) {
         LOG_WARN("All players disconnected. Returning to PREGAME");
         try_transition_state(GAME_STATE::PREGAME);
     }
-    
-    broadcast_player_list();
 }
 
-void GameServer::broadcast_player_list() {
-    // TODO: Implement broadcasting player list to all connected clients
-    // For now, this is a placeholder for future networking implementation
+void GameServer::initialize_coordinator() {
+    // Set up WaveSystem with all required services
+    gameplay_.initialize_wave_system(&entity_manager_, &network_service_, navigation_service_.get(), map_pointer_.get());
 }
 
 bool GameServer::is_valid_state_transition(GAME_STATE from, GAME_STATE to) const {

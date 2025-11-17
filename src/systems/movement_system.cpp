@@ -7,9 +7,53 @@
 #include <log.hpp>
 #include <cmath>
 
-void MovementSystem::update(EntityManager& entity_manager, float delta_time, NavigationService* navigation_service, const Map* map) {
+void MovementSystem::update(const SystemContext& ctx) {
+    // Process pathfinding results for waiting entities
+    if (ctx.navigation_service) {
+        std::optional<PathResult> result = ctx.navigation_service->GetResult();
+        while (result) {
+            Entity* entity = ctx.entity_manager.get_entity(result->entity_id);
+            LOG_INFO("Got pathfinding result for entity %u, path size=%zu", result->entity_id, result->path.size());
+            if (entity && entity->has_component<PathfindingComponent>()) {
+                PathfindingComponent* pathfinding = entity->get_component<PathfindingComponent>();
+                EntityStateComponent* entity_state = entity->get_component<EntityStateComponent>();
+                
+                pathfinding->waypoints = result->path;
+                pathfinding->current_waypoint_index = 0;
+                
+                if (result->path.empty()) {
+                    LOG_WARN("Entity %u received EMPTY path!", entity->get_id());
+                } else {
+                    LOG_INFO("Entity %u received path with %zu waypoints, transitioning to MOVING", 
+                             entity->get_id(), result->path.size());
+                    // Transition to MOVING state when path is received
+                    if (entity_state) {
+                        entity_state->current_state = EntityState::MOVING;
+                        entity_state->state_duration_ms = 0.0f;
+                        LOG_INFO("Entity %u state transitioned to MOVING (state=%d)", entity->get_id(), (int)entity_state->current_state);
+                    }
+                }
+            }
+            result = ctx.navigation_service->GetResult();
+        }
+    }
+    
+    // Retry pending pathfinding requests (entities waiting for paths)
+    if (ctx.navigation_service) {
+        auto entities = ctx.entity_manager.get_entities_with_component<PathfindingComponent>();
+        for (auto* entity : entities) {
+            PathfindingComponent* pathfinding = entity->get_component<PathfindingComponent>();
+            EntityStateComponent* entity_state = entity->get_component<EntityStateComponent>();
+            if (pathfinding && entity_state && 
+                entity_state->current_state == EntityState::PATHFINDING_WAITING && 
+                pathfinding->waypoints.empty()) {
+                request_new_path(*entity, pathfinding->target_spawnpoint_id, ctx.navigation_service, ctx.map);
+            }
+        }
+    }
+
     // Get all entities with movement components
-    auto moving_entities = entity_manager.get_entities_with_component<Movement>();
+    auto moving_entities = ctx.entity_manager.get_entities_with_component<Movement>();
     
     for (auto* entity : moving_entities) {
         Movement* movement = entity->get_component<Movement>();
@@ -19,12 +63,11 @@ void MovementSystem::update(EntityManager& entity_manager, float delta_time, Nav
         if (!movement || !stats) {
             continue;
         }
-        
+
         // Update stuck detection for entities with pathfinding
         if (pathfinding) {
-            float delta_time_ms = delta_time * 1000.0f;
-            EntityStateComponent* entity_state = entity->get_component<EntityStateComponent>();
-            
+            float delta_time_ms = ctx.delta_time_ms;
+            EntityStateComponent* entity_state = entity->get_component<EntityStateComponent>();            
             // Check if entity has moved since last frame
             float movement_distance = distance(movement->position, pathfinding->last_position);
             
@@ -37,8 +80,8 @@ void MovementSystem::update(EntityManager& entity_manager, float delta_time, Nav
                     entity_state && entity_state->current_state == EntityState::MOVING &&
                     !pathfinding->waypoints.empty()) {
                     LOG_DEBUG("Minion %u is stuck, requesting new path", entity->get_id());
-                    if (navigation_service && map && pathfinding->target_spawnpoint_id < map->spawnpoints.size()) {
-                        request_new_path(*entity, pathfinding->target_spawnpoint_id, navigation_service, map);
+                    if (ctx.navigation_service && ctx.map && pathfinding->target_spawnpoint_id < ctx.map->spawnpoints.size()) {
+                        request_new_path(*entity, pathfinding->target_spawnpoint_id, ctx.navigation_service, ctx.map);
                         // Transition to waiting state
                         if (entity_state) {
                             entity_state->current_state = EntityState::PATHFINDING_WAITING;
@@ -69,10 +112,10 @@ void MovementSystem::update(EntityManager& entity_manager, float delta_time, Nav
             // Get current waypoint
             if (pathfinding->current_waypoint_index >= pathfinding->waypoints.size()) {
                 // Reached end of path - request path to next spawnpoint if possible
-                if (map && pathfinding->target_spawnpoint_id < map->spawnpoints.size()) {
-                    uint32_t next_spawnpoint = (pathfinding->target_spawnpoint_id + 1) % map->spawnpoints.size();
-                    if (navigation_service && entity_state) {
-                        request_new_path(*entity, next_spawnpoint, navigation_service, map);
+                if (ctx.map && pathfinding->target_spawnpoint_id < ctx.map->spawnpoints.size()) {
+                    uint32_t next_spawnpoint = (pathfinding->target_spawnpoint_id + 1) % ctx.map->spawnpoints.size();
+                    if (ctx.navigation_service && entity_state) {
+                        request_new_path(*entity, next_spawnpoint, ctx.navigation_service, ctx.map);
                         entity_state->current_state = EntityState::PATHFINDING_WAITING;
                         entity_state->state_duration_ms = 0.0f;
                     }
@@ -101,7 +144,7 @@ void MovementSystem::update(EntityManager& entity_manager, float delta_time, Nav
             
             // Normalize direction and apply speed
             float move_speed = stats->move_speed;
-            float distance_to_move = move_speed * delta_time;
+            float distance_to_move = move_speed * (ctx.delta_time_ms / 1000.0f);
             
             Vec2 new_position;
             if (distance_to_move >= distance) {
@@ -114,17 +157,19 @@ void MovementSystem::update(EntityManager& entity_manager, float delta_time, Nav
             }
             
             // Check for collision with other entities
-            if (!has_collision(*entity, new_position, entity_manager)) {
+            if (!has_collision(*entity, new_position, ctx.entity_manager)) {
                 movement->position = new_position;
             } else {
                 // If direct path is blocked, try to move sideways to avoid collision
+                // TODO: Make this better with proper pathfinding around obstacles
+                // Maybe move to nearest point along a circle around the obstacle, then recalculate path?
                 Vec2 perpendicular = Vec2(-direction.y, direction.x).normalized();
                 Vec2 sideways_left = current_pos + (perpendicular * distance_to_move);
                 Vec2 sideways_right = current_pos + (perpendicular * -distance_to_move);
                 
-                if (!has_collision(*entity, sideways_left, entity_manager)) {
+                if (!has_collision(*entity, sideways_left, ctx.entity_manager)) {
                     movement->position = sideways_left;
-                } else if (!has_collision(*entity, sideways_right, entity_manager)) {
+                } else if (!has_collision(*entity, sideways_right, ctx.entity_manager)) {
                     movement->position = sideways_right;
                 }
                 // If both sideways moves are blocked, just don't move (will accumulate stuck time)

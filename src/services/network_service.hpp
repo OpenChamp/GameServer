@@ -37,6 +37,12 @@ public:
     void disconnect();
 
     /**
+     * Disconnect a specific client.
+     * @param client_id ID of the client to disconnect
+     */
+    void disconnect_client(const std::string& client_id);
+
+    /**
      * Send a packet of specified type to a peer.
      * @param packet_type Type of packet to send
      * @param client_id Id of the peer to send the packet to

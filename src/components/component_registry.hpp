@@ -23,12 +23,16 @@ namespace ComponentTypes {
     constexpr uint32_t PATHFINDING = 2009;
     constexpr uint32_t EXPERIENCE = 2011;
     
+    // === Attack & Combat (2020-2099) ===
+    constexpr uint32_t ATTACK = 2020;
+    constexpr uint32_t TARGET = 2021;
+    constexpr uint32_t AUTO_ATTACK = 2022;
+    constexpr uint32_t WAVE_STATE = 2050;
+    
     // === Network & Player (3000-3099) ===
     constexpr uint32_t CLIENT_INFO = 3001;
     constexpr uint32_t READINESS = 3002;
     constexpr uint32_t NETWORK_METADATA = 3003;
     constexpr uint32_t NETWORK_ENTITY = 3004;
-    
-    // === Wave System (2050-2099) ===
-    constexpr uint32_t WAVE_STATE = 2050;
+    constexpr uint32_t PLAYER_OWNED = 3005;
 }

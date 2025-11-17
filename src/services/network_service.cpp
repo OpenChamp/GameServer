@@ -84,6 +84,19 @@ void NetworkService::disconnect() {
     is_connected_ = false;
 }
 
+void NetworkService::disconnect_client(const std::string& client_id) {
+    auto it = backend_->clients_.find(client_id);
+    if (it != backend_->clients_.end()) {
+        ENetPeer* peer = it->second;
+        if (peer) {
+            // Request graceful disconnection
+            enet_peer_disconnect(peer, 0);
+        }
+        // Remove from clients map
+        backend_->clients_.erase(it);
+    }
+}
+
 bool NetworkService::run_callbacks() {
     if (!backend_->enet_server_) {
         return false;

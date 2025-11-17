@@ -146,7 +146,6 @@ std::vector<Vec2> AStarPathfinder::FindPath(
                     vertices
                 );
                 waypoints.push_back(edge_point);
-
                 current_poly = parent_poly;
             }
 

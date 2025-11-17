@@ -2,31 +2,65 @@
 
 #include <services/network_service.hpp>
 #include <services/navigation_service.hpp>
+#include <systems/system_context.hpp>
+#include <systems/spawning_system.hpp>
 #include <cstdint>
 #include <systems/entity_manager.hpp>
 #include <components/map.hpp>
 
 /**
- * System to manage wave spawning and progression.
- * Handles the timing and logic for enemy waves in the game.
- * Minions spawn and automatically request paths to their target spawnpoints.
+ * WaveSystem - Manages enemy wave spawning and progression
+ * 
+ * RESPONSIBILITIES:
+ *   - Spawn minions at regular intervals
+ *   - Track wave progression
+ *   - Process pathfinding results for spawned minions
+ *   - Coordinate with SpawningSystem for entity creation
+ * 
+ * SYSTEMS USED:
+ *   - SpawningSystem (for entity spawning)
+ *   - NavigationService (for pathfinding)
+ * 
+ * SYSTEM INTERACTION:
+ *   - Called by GameplayCoordinator via update()
+ *   - Spawns entities at regular intervals
+ *   - Requests paths from NavigationService
+ * 
+ * USAGE:
+ *   WaveSystem wave_system;
+ *   wave_system.initialize(entity_manager, network_service, navigation_service, map);
+ *   // In game loop:
+ *   wave_system.update(ctx);
  */
 class WaveSystem {
 public:
-    WaveSystem(EntityManager* entity_manager, NetworkService* network_service = nullptr, NavigationService* navigation_service = nullptr, const Map* map = nullptr);
-    /** 
-     * Tick the wave system to update wave state and process pathfinding results.
-     * @param delta_time_ms Time elapsed since last tick in milliseconds
+    WaveSystem() = default;
+    
+    /**
+     * Initialize the wave system with required services.
+     * Must be called before update().
+     * @param entity_manager Entity manager for spawning
+     * @param network_service Network service for broadcasting spawns
+     * @param navigation_service Navigation service for pathfinding
+     * @param map Map data for spawnpoints
      */
-    void tick(float delta_time_ms);
+    void initialize(EntityManager* entity_manager, NetworkService* network_service,
+                   NavigationService* navigation_service, const Map* map);
+    
+    /**
+     * Update wave system - spawn minions and process pathfinding results.
+     * @param ctx System context
+     */
+    void update(const SystemContext& ctx);
     
 private:
-    EntityManager* entity_manager_;
-    NetworkService* network_service_;
-    NavigationService* navigation_service_;
-    const Map* map_;
-    float wave_interval_ms; // 30 seconds between waves
-    float wave_delay_ms;    // 1 second delay between minions in a wave
+    EntityManager* entity_manager_ = nullptr;
+    NetworkService* network_service_ = nullptr;
+    NavigationService* navigation_service_ = nullptr;
+    const Map* map_ = nullptr;
+    SpawningSystem spawning_system_;
+    float wave_interval_ms = 30000.0f;  // 30 seconds between waves
+    float wave_delay_ms = 10000.0f;      // 1 second delay between minions in a wave
     float elapsed_time_ms;
     float last_spawn_timestamp;
     int minion_index;
@@ -37,12 +71,13 @@ private:
 
     /**
      * Try to spawn a minion of the given type.
+     * @param ctx System context (contains entity manager and network service)
      * @param minion_template The template name of the minion to spawn
      * @param team_id The team this minion belongs to
      * @param spawn_point_id Starting spawnpoint ID (0-indexed)
      * @return true if minion spawned successfully
      */
-    bool create_minion(const std::string& minion_template, uint8_t team_id, uint32_t spawn_point_id);
+    bool create_minion(const SystemContext& ctx, const std::string& minion_template, uint8_t team_id, uint32_t spawn_point_id);
     
     /**
      * Request a path for a minion to its target spawnpoint.

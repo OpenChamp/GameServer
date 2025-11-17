@@ -61,7 +61,11 @@ set(GAMESERVER_SOURCES
 	src/systems/movement_system.cpp
 	src/systems/network_sync_system.cpp
 	src/systems/serialization_system.cpp
+	src/systems/spawning_system.cpp
 	src/systems/wave_system.cpp
+	src/systems/player_manager.cpp
+	src/systems/packet_handler.cpp
+	src/systems/gameplay_coordinator.cpp
 )
 
 # Header files (for IDE organization)
@@ -86,7 +90,22 @@ set(GAMESERVER_HEADERS
 	src/systems/combat_system.hpp
 	src/systems/movement_system.hpp
 	src/systems/serialization_system.hpp
+	src/systems/spawning_system.hpp
 	src/systems/wave_system.hpp
+	src/systems/network_sync_system.hpp
+	src/systems/player_manager.hpp
+	src/systems/system_context.hpp
+	src/systems/packet_handler.hpp
+	src/systems/gameplay_coordinator.hpp
+	src/components/client_info.hpp
+	src/components/readiness.hpp
+	src/components/network_metadata.hpp
+	src/components/wave_state.hpp
+	src/components/network_entity.hpp
+	src/components/player_owned.hpp
+	src/components/attack.hpp
+	src/components/target.hpp
+	src/components/auto_attack.hpp
 )
 
 set(LIBRARY_SOURCES

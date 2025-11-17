@@ -95,7 +95,7 @@ struct NavigationService::NavServiceBackend {
                 LOG_DEBUG("Navigation: Entity %u path with %zu waypoints", req.entity_id, res.path.size());
             }
 
-            // we have our result, so let's hand it back to the main thread now
+            // we have our result, back to the main thread
             if(!lock.try_lock()) {
                 // we couldn't lock, so cache this result for later
                 // if we don't cache and submit this later, the request will be lost

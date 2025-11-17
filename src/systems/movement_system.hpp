@@ -5,10 +5,8 @@
 #include "components/movement.hpp"
 #include "components/map.hpp"
 #include "math.hpp"
+#include "system_context.hpp"
 #include <vector>
-
-// Forward declaration to avoid circular dependencies
-class NavigationService;
 
 /**
  * System to handle entity movement along pathfinding waypoints.
@@ -20,12 +18,9 @@ public:
     /**
      * Update all moving entities.
      * Moves entities toward their current waypoints and handles path progression.
-     * @param entity_manager Reference to the entity manager
-     * @param delta_time Time elapsed since last update in seconds
-     * @param navigation_service Optional pointer to navigation service for requesting new paths
-     * @param map Optional pointer to map for spawnpoint information
+     * @param ctx System context containing entity manager, navigation service, and map
      */
-    void update(EntityManager& entity_manager, float delta_time, NavigationService* navigation_service = nullptr, const Map* map = nullptr);
+    void update(const SystemContext& ctx);
     
 private:
     /**

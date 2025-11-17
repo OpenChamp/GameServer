@@ -2,6 +2,7 @@
 #include "components/client_info.hpp"
 #include "components/readiness.hpp"
 #include "components/network_metadata.hpp"
+#include "components/player_owned.hpp"
 #include <log.hpp>
 
 EntityID PlayerManager::on_client_connect(const std::string& client_id, EntityManager& entity_manager) {
@@ -37,6 +38,14 @@ bool PlayerManager::on_client_disconnect(const std::string& client_id, EntityMan
     
     EntityID player_entity_id = it->second;
     
+    // Find and destroy the champion owned by this player
+    EntityID champion_id = get_champion_entity_id(player_entity_id, entity_manager);
+    if (champion_id != INVALID_ENTITY_ID) {
+        if (!entity_manager.destroy_entity(champion_id)) {
+            LOG_WARN("Failed to destroy champion entity %u", champion_id);
+        }
+    }
+    
     // Destroy player entity
     if (!entity_manager.destroy_entity(player_entity_id)) {
         LOG_ERROR("Failed to destroy player entity %u", player_entity_id);
@@ -45,8 +54,8 @@ bool PlayerManager::on_client_disconnect(const std::string& client_id, EntityMan
     // Remove mapping
     client_to_entity_.erase(it);
     
-    LOG_INFO("Player disconnected: client_id=%s, entity_id=%u, remaining=%zu",
-             client_id.c_str(), player_entity_id, client_to_entity_.size());
+    LOG_INFO("Player disconnected: client_id=%s, player=%u, champion=%u, remaining=%zu",
+             client_id.c_str(), player_entity_id, champion_id, client_to_entity_.size());
     
     return true;
 }
@@ -119,6 +128,18 @@ EntityID PlayerManager::get_player_entity_id(const std::string& client_id) const
     return it->second;
 }
 
+EntityID PlayerManager::get_champion_entity_id(EntityID player_entity_id, EntityManager& entity_manager) const {
+    // Find champion owned by this player
+    auto champions = entity_manager.get_entities_with_component<PlayerOwnedComponent>();
+    for (auto* champion : champions) {
+        auto* player_owned = champion->get_component<PlayerOwnedComponent>();
+        if (player_owned && player_owned->owning_player_id == player_entity_id) {
+            return champion->get_id();
+        }
+    }
+    return INVALID_ENTITY_ID;
+}
+
 std::vector<EntityID> PlayerManager::get_all_player_entities() const {
     std::vector<EntityID> result;
     for (const auto& [client_id, entity_id] : client_to_entity_) {
@@ -160,7 +181,7 @@ void PlayerManager::clear() {
 }
 
 EntityID PlayerManager::create_player_entity(const std::string& client_id, EntityManager& entity_manager) {
-    // Create entity from template
+    // Create player entity from template
     Entity& player_entity = entity_manager.create_entity_from_template("player");
     EntityID player_id = player_entity.get_id();
     
@@ -181,6 +202,18 @@ EntityID PlayerManager::create_player_entity(const std::string& client_id, Entit
         auto metadata_comp = std::make_unique<NetworkMetadataComponent>();
         player_entity.add_component(std::move(metadata_comp));
     }
+    
+    // Create champion entity from template
+    Entity& champion_entity = entity_manager.create_entity_from_template("champion");
+    EntityID champion_id = champion_entity.get_id();
+    
+    // Link champion to player
+    auto player_owned_comp = std::make_unique<PlayerOwnedComponent>();
+    player_owned_comp->owning_player_id = player_id;
+    champion_entity.add_component(std::move(player_owned_comp));
+    
+    LOG_INFO("Created player (ID %u) with champion (ID %u) for client %s",
+             player_id, champion_id, client_id.c_str());
     
     return player_id;
 }

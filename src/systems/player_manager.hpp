@@ -99,6 +99,13 @@ public:
     EntityID get_player_entity_id(const std::string& client_id) const;
     
     /**
+     * Get champion entity ID by player entity ID.
+     * @param player_entity_id Player entity ID
+     * @return Entity ID, or INVALID_ENTITY_ID if not found
+     */
+    EntityID get_champion_entity_id(EntityID player_entity_id, EntityManager& entity_manager) const;
+    
+    /**
      * Get all connected player entity IDs.
      * @return Vector of entity IDs for all connected players
      */

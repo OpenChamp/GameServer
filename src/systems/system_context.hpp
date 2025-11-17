@@ -45,6 +45,10 @@ struct SystemContext {
     // === Timing ===
     float delta_time_ms = 0.0f;             // Frame delta time in milliseconds
     
+    // === Constructor ===
+    SystemContext(EntityManager& em)
+        : entity_manager(em) {}
+    
     // === Convenience Methods ===
     
     /**
