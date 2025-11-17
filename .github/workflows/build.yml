@@ -42,7 +42,7 @@ jobs:
 
     - name: Upload Windows artifacts
       if: matrix.config == 'Release'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: gameserver-windows-x64
         path: build/_output/windows_x64/
@@ -79,7 +79,7 @@ jobs:
 
     - name: Upload Linux artifacts
       if: matrix.config == 'Release'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: gameserver-linux-x64
         path: build/_output/linux_x64/
