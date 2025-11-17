@@ -3,6 +3,7 @@
 #include "services/navigation_service.hpp"
 #include <components/pathfinding.hpp>
 #include <components/stats.hpp>
+#include <components/entity_state.hpp>
 #include <log.hpp>
 #include <cmath>
 
@@ -22,6 +23,7 @@ void MovementSystem::update(EntityManager& entity_manager, float delta_time, Nav
         // Update stuck detection for entities with pathfinding
         if (pathfinding) {
             float delta_time_ms = delta_time * 1000.0f;
+            EntityStateComponent* entity_state = entity->get_component<EntityStateComponent>();
             
             // Check if entity has moved since last frame
             float movement_distance = distance(movement->position, pathfinding->last_position);
@@ -32,11 +34,16 @@ void MovementSystem::update(EntityManager& entity_manager, float delta_time, Nav
                 
                 // If stuck too long and not already waiting for path, request new one
                 if (pathfinding->stuck_time_ms >= PathfindingComponent::STUCK_THRESHOLD_MS && 
-                    !pathfinding->is_waiting_for_path && 
+                    entity_state && entity_state->current_state == EntityState::MOVING &&
                     !pathfinding->waypoints.empty()) {
                     LOG_DEBUG("Minion %u is stuck, requesting new path", entity->get_id());
                     if (navigation_service && map && pathfinding->target_spawnpoint_id < map->spawnpoints.size()) {
                         request_new_path(*entity, pathfinding->target_spawnpoint_id, navigation_service, map);
+                        // Transition to waiting state
+                        if (entity_state) {
+                            entity_state->current_state = EntityState::PATHFINDING_WAITING;
+                            entity_state->state_duration_ms = 0.0f;
+                        }
                     }
                     pathfinding->waypoints.clear();
                     pathfinding->current_waypoint_index = 0;
@@ -51,14 +58,23 @@ void MovementSystem::update(EntityManager& entity_manager, float delta_time, Nav
         }
         
         // If entity has pathfinding, move along the path (but not while waiting for new path)
-        if (pathfinding && !pathfinding->is_waiting_for_path && !pathfinding->waypoints.empty()) {
+        if (pathfinding && !pathfinding->waypoints.empty()) {
+            EntityStateComponent* entity_state = entity->get_component<EntityStateComponent>();
+            
+            // Only move if in MOVING state
+            if (!entity_state || entity_state->current_state != EntityState::MOVING) {
+                continue;
+            }
+            
             // Get current waypoint
             if (pathfinding->current_waypoint_index >= pathfinding->waypoints.size()) {
                 // Reached end of path - request path to next spawnpoint if possible
                 if (map && pathfinding->target_spawnpoint_id < map->spawnpoints.size()) {
                     uint32_t next_spawnpoint = (pathfinding->target_spawnpoint_id + 1) % map->spawnpoints.size();
-                    if (navigation_service) {
+                    if (navigation_service && entity_state) {
                         request_new_path(*entity, next_spawnpoint, navigation_service, map);
+                        entity_state->current_state = EntityState::PATHFINDING_WAITING;
+                        entity_state->state_duration_ms = 0.0f;
                     }
                 }
                 pathfinding->waypoints.clear();
@@ -179,7 +195,11 @@ void MovementSystem::request_new_path(Entity& entity, uint32_t target_spawnpoint
     request.entity_pathing_radius = 0.5f;
     
     if (navigation_service->MakeRequest(request)) {
-        pathfinding->is_waiting_for_path = true;
+        EntityStateComponent* entity_state = entity.get_component<EntityStateComponent>();
+        if (entity_state) {
+            entity_state->current_state = EntityState::PATHFINDING_WAITING;
+            entity_state->state_duration_ms = 0.0f;
+        }
         pathfinding->target_spawnpoint_id = target_spawnpoint_id;
         LOG_DEBUG("Minion %u requested path to spawnpoint %u", entity.get_id(), target_spawnpoint_id);
     }

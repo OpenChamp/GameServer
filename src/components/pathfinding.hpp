@@ -8,19 +8,28 @@
 /**
  * Pathfinding component for entities.
  * Stores path waypoints and tracks progress along the path.
+ * Entity state is tracked in EntityStateComponent (PATHFINDING_WAITING, MOVING, STUCK).
  */
 struct PathfindingComponent : public Component {
+    // Current path waypoints (3D positions)
     std::vector<Vec3> waypoints;
+    
+    // Index of the next waypoint to move toward
     int current_waypoint_index = 0;
+    
+    // Target spawnpoint ID (the destination spawnpoint this path leads to)
     uint32_t target_spawnpoint_id = 0;
     
-    bool is_waiting_for_path = false;
     // Request ID for tracking async pathfinding requests
     uint32_t path_request_id = 0;
+    
     // Track last position to detect if entity is stuck
     Vec2 last_position = Vec2(0.0f, 0.0f);
+    
+    // Time spent stuck without progress (milliseconds)
     float stuck_time_ms = 0.0f;
-    // Stuck Timeout Threshold
+    
+    // Threshold for considering entity stuck (milliseconds)
     static constexpr float STUCK_THRESHOLD_MS = 2000.0f;
     
     COMPONENT_TYPE_ID(PathfindingComponent, 2009)

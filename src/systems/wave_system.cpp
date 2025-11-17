@@ -6,6 +6,7 @@
 #include "services/navigation_service.hpp"
 #include <components/movement.hpp>
 #include <components/pathfinding.hpp>
+#include <components/entity_state.hpp>
 #include <vector>
 #include <string>
 #include <cmath>
@@ -51,15 +52,21 @@ void WaveSystem::tick(float delta_time_ms) {
             Entity* entity = entity_manager_->get_entity(result->entity_id);
             if (entity && entity->has_component<PathfindingComponent>()) {
                 PathfindingComponent* pathfinding = entity->get_component<PathfindingComponent>();
+                EntityStateComponent* entity_state = entity->get_component<EntityStateComponent>();
+                
                 pathfinding->waypoints = result->path;
                 pathfinding->current_waypoint_index = 0;
-                pathfinding->is_waiting_for_path = false;
                 
                 if (result->path.empty()) {
                     LOG_WARN("Minion %u received EMPTY path!", entity->get_id());
                 } else {
                     LOG_DEBUG("Minion %u received path with %zu waypoints", 
                              entity->get_id(), result->path.size());
+                    // Transition to MOVING state when path is received
+                    if (entity_state) {
+                        entity_state->current_state = EntityState::MOVING;
+                        entity_state->state_duration_ms = 0.0f;
+                    }
                 }
             }
             result = navigation_service_->GetResult();
@@ -67,11 +74,15 @@ void WaveSystem::tick(float delta_time_ms) {
     }
     
     // Retry pending pathfinding requests (entities waiting for paths)
+
     if (navigation_service_) {
         auto entities = entity_manager_->get_entities_with_component<PathfindingComponent>();
         for (auto* entity : entities) {
             PathfindingComponent* pathfinding = entity->get_component<PathfindingComponent>();
-            if (pathfinding && pathfinding->is_waiting_for_path && pathfinding->waypoints.empty()) {
+            EntityStateComponent* entity_state = entity->get_component<EntityStateComponent>();
+            if (pathfinding && entity_state && 
+                entity_state->current_state == EntityState::PATHFINDING_WAITING && 
+                pathfinding->waypoints.empty()) {
                 request_minion_path(*entity, pathfinding->target_spawnpoint_id);
             }
         }
@@ -132,6 +143,11 @@ bool WaveSystem::create_minion(const std::string& minion_template, uint8_t team_
     auto pathfinding = std::make_unique<PathfindingComponent>();
     minion.add_component(std::move(pathfinding));
     
+    // Add entity state component (starts in SPAWNED state)
+    auto entity_state = std::make_unique<EntityStateComponent>();
+    entity_state->current_state = EntityState::SPAWNED;
+    minion.add_component(std::move(entity_state));
+    
     // Request initial path to next spawnpoint (enemy spawn)
     // TODO: Make this better -- cmkrist 16/11/2025
     uint32_t target_spawnpoint = (spawn_point_id + 1) % (map_ ? map_->spawnpoints.size() : 2);
@@ -175,14 +191,23 @@ void WaveSystem::request_minion_path(Entity& entity, uint32_t target_spawnpoint_
     request.destination = goal;
     request.entity_pathing_radius = 0.5f;
     
+    EntityStateComponent* entity_state = entity.get_component<EntityStateComponent>();
+    
     if (navigation_service_->MakeRequest(request)) {
-        pathfinding->is_waiting_for_path = true;
         pathfinding->target_spawnpoint_id = target_spawnpoint_id;
+        // Transition to waiting state
+        if (entity_state) {
+            entity_state->current_state = EntityState::PATHFINDING_WAITING;
+            entity_state->state_duration_ms = 0.0f;
+        }
         LOG_DEBUG("Path request queued for minion %u", entity.get_id());
     } else {
         // Mark as waiting for path so we retry next tick
-        pathfinding->is_waiting_for_path = true;
         pathfinding->target_spawnpoint_id = target_spawnpoint_id;
+        if (entity_state) {
+            entity_state->current_state = EntityState::PATHFINDING_WAITING;
+            entity_state->state_duration_ms = 0.0f;
+        }
         LOG_DEBUG("Pathfinding queue full, will retry for minion %u", entity.get_id());
     }
 }
