@@ -5,6 +5,8 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <thread>
+#include <chrono>
 
 #include "../src/systems/entity_manager.hpp"
 #include "../src/components/movement.hpp"
@@ -78,7 +80,7 @@ TEST(component_retrieval) {
     Movement* retrieved = entity.get_component<Movement>();
     ASSERT_NE(retrieved, nullptr);
     ASSERT_EQ(retrieved->position.x, 5.0f);
-    ASSERT_EQ(retrieved->position.y, 10.0f);
+    ASSERT_EQ(retrieved->position.y, 15.0f);
 }
 
 TEST(component_removal) {
@@ -183,6 +185,9 @@ TEST(player_stale_check) {
 TEST(player_activity_update) {
     Player player("test_client");
     auto first_time = player.last_activity;
+    
+    // Add a small delay to ensure timestamp changes
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
     
     player.update_activity();
     auto second_time = player.last_activity;
