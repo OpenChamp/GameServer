@@ -25,6 +25,11 @@ const std::unordered_map<std::string, spawn_type> spawn_groups = {
     {"camp_spawn", spawn_type::CAMP_SPAWN},
     {"objective_spawn", spawn_type::OBJECTIVE_SPAWN}
 };
+
+const std::unordered_map<std::string, std::int8_t> spawn_teams = {
+    {"team1", 1},
+    {"team2", 2}
+};
 /**
  * System to load and manage game maps from Godot tscn files.
  * Parses navmesh data and provides it to clients.

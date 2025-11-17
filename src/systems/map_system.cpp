@@ -79,7 +79,7 @@ std::optional<Map> MapSystem::load_map(const std::optional<std::string>& file_pa
         return std::nullopt;
     }
 
-    // Parse spawnpoints (not used yet) -- cmkrist 16/11/2025
+    // Parse spawnpoints
     std::vector<SpawnPoint> spawnpoints = parse_spawnpoints_from_tscn(file_content);
     LOG_INFO("Parsed %zu spawnpoints from map file", spawnpoints.size());
     
@@ -90,12 +90,18 @@ std::optional<Map> MapSystem::load_map(const std::optional<std::string>& file_pa
     map.name = actual_file_path.substr(final_slash_index + 1, actual_file_path.find_last_of('.') - final_slash_index - 1);
     map.vertices = navmesh_data.vertices;
     map.polygons = navmesh_data.polygons;
+    // Store spawnpoints directly (already Vec2 from parsing)
+    map.spawnpoints.reserve(spawnpoints.size());
+    for (const auto& sp : spawnpoints) {
+        map.spawnpoints.push_back(sp.position);
+        LOG_INFO("  Spawnpoint: (%.1f, %.1f)", sp.position.x, sp.position.y);
+    }
     // Get 2d size and offset
     map.size = MapSystem::calculate_size_from_vertices(navmesh_data.vertices);
     map.offset = map.size / 2.0f;
 
-    LOG_INFO("Loaded map '%s' with %zu vertices and %zu polygons",
-             map.name.c_str(), navmesh_data.vertices.size(), navmesh_data.polygons.size());
+    LOG_INFO("Loaded map '%s' with %zu vertices, %zu polygons, and %zu spawnpoints",
+             map.name.c_str(), navmesh_data.vertices.size(), navmesh_data.polygons.size(), spawnpoints.size());
 
     return std::optional<Map>(map);
 }
@@ -166,7 +172,7 @@ std::vector<MapSystem::SpawnPoint> MapSystem::parse_spawnpoints_from_tscn(const 
         }
 
         // Check groups for team and spawn type
-        size_t groups_pos = file_content.find("groups = [", spawn_pos);
+        size_t groups_pos = file_content.find("groups=[", spawn_pos);
         if (groups_pos == std::string::npos || groups_pos > file_content.find("\n", spawn_pos)) {
             pos = spawn_pos + 1;
             continue; // No groups found
@@ -184,15 +190,16 @@ std::vector<MapSystem::SpawnPoint> MapSystem::parse_spawnpoints_from_tscn(const 
             if (groups_str.find(spawn_type_str) != std::string::npos) {
                 is_spawnpoint = true;
                 sp.type = spawn_type_enum;
+                LOG_INFO("Marker3D node at pos %zu is a spawnpoint of type %d", spawn_pos, spawn_type_enum);
                 break;
             }
         }
 
         // Check for team ID (legacy: team_id appears as a group string)
         // TODO: Verify team ID parsing logic - currently only checks spawn_groups for team assignment
-        for (const auto& [group_name, team_enum] : spawn_groups) {
+        for (const auto& [group_name, team_id] : spawn_teams) {
             if (groups_str.find(group_name) != std::string::npos) {
-                sp.team_id = team_enum;
+                sp.team_id = team_id;
                 break;
             }
         }
@@ -204,45 +211,71 @@ std::vector<MapSystem::SpawnPoint> MapSystem::parse_spawnpoints_from_tscn(const 
         
         
         // Parse position
-        std::string position_string = "position = Vector3(";
+        std::string position_string = "Transform3D(";
         size_t position_pos = file_content.find(position_string, spawn_pos);
-        if (position_pos != std::string::npos) {
-            position_pos += position_string.length();
-            size_t position_end = file_content.find(")", position_pos);
-            if (position_end != std::string::npos) {
-                std::string position_data = file_content.substr(position_pos, position_end - position_pos);
-                std::vector<float> coords;
-                size_t coord_pos = 0;
-                while (coord_pos < position_data.length()) {
-                    // Skip whitespace and commas
-                    while (coord_pos < position_data.length() && (std::isspace(position_data[coord_pos]) || position_data[coord_pos] == ',')) {
-                        coord_pos++;
-                    }
-                    
-                    if (coord_pos >= position_data.length()) break;
-                    
-                    // Find end of number
-                    size_t start = coord_pos;
-                    while (coord_pos < position_data.length() && (std::isdigit(position_data[coord_pos]) || position_data[coord_pos] == '-' || position_data[coord_pos] == '.')) {
-                        coord_pos++;
-                    }
-                    
-                    std::string num_str = position_data.substr(start, coord_pos - start);
-                    if (!num_str.empty()) {
-                        try {
-                            coords.push_back(std::stof(num_str));
-                        } catch (...) {
-                            LOG_WARN("Failed to parse spawnpoint coordinate: %s", num_str.c_str());
-                        }
-                    }
-                }
-                
-                if (coords.size() >= 3) {
-                    sp.position = Vec2(coords[0], coords[2]);
+        if (position_pos == std::string::npos) {
+            LOG_WARN("SpawnPoint missing position data");
+            pos = spawn_pos + 1;
+            continue;
+        }
+        position_pos += position_string.length(); // Skip "Transform3D("
+        size_t position_end = file_content.find(")", position_pos);
+        if (position_end == std::string::npos) {
+            LOG_WARN("SpawnPoint missing position data");
+            pos = spawn_pos + 1;
+            continue;
+        }
+
+        std::string position_data = file_content.substr(position_pos, position_end - position_pos);
+        // Parse all values from Transform3D(m00, m01, ..., m33)
+        // Godot Transform3D has 12 values: 3x3 matrix (9) + position (3)
+        // Position is in the last 3 values (indices 9, 10, 11 which are x, y, z)
+        std::vector<float> matrix_vals;
+        size_t tpos = 0;
+
+        // Parse all floats
+        while (tpos < position_data.length()) {
+            // Skip whitespace
+            while (tpos < position_data.length() && std::isspace(position_data[tpos])) {
+                tpos++;
+            }
+            
+            if (tpos >= position_data.length()) break;
+            
+            // Negative numbers
+            size_t start = tpos;
+            if (position_data[tpos] == '-') tpos++;
+            
+            // Find end of number
+            while (tpos < position_data.length() && (std::isdigit(position_data[tpos]) || position_data[tpos] == '.')) {
+                tpos++;
+            }
+            
+            // Add number to coords
+            std::string num_str = position_data.substr(start, tpos - start);
+            if (!num_str.empty()) {
+                try {
+                    matrix_vals.push_back(std::stof(num_str));
+                } catch (...) {
+                    LOG_WARN("Failed to parse spawnpoint matrix value: %s", num_str.c_str());
                 }
             }
+            
+            // Skip comma if present
+            if (tpos < position_data.length() && position_data[tpos] == ',') {
+                tpos++;
+            }
         }
-        
+
+        // Set spawnpoint position from Transform3D matrix
+        // Transform3D has 12 values: indices 9, 10, 11 are x, y, z translation
+        if (matrix_vals.size() >= 12) {
+            sp.position = Vec2(matrix_vals[9], matrix_vals[11]);  // x and z coordinates
+            LOG_INFO("Parsed spawnpoint position: (%.1f, %.1f)", sp.position.x, sp.position.y);
+        } else {
+            LOG_WARN("SpawnPoint position data malformed - got %zu values instead of 12", matrix_vals.size());
+        }
+
         spawnpoints.push_back(sp);
         pos = spawn_pos + 1;
     }
