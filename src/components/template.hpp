@@ -13,5 +13,5 @@ public:
     TemplateComponent(std::string template_id) : template_id(template_id) {};
     std::string template_id;
 
-    COMPONENT_TYPE_ID(TemplateComponent, 2311)
+    COMPONENT_TYPE_ID(TemplateComponent, 3006)
 };
