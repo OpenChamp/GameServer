@@ -3,6 +3,22 @@
 #include <filesystem>
 
 #include <libs/pugixml.hpp>
+#include <components/stats.hpp>
+
+/**
+ * Convert string to DamageType enum.
+ * @param str The string to convert (case-insensitive)
+ * @return DamageType enum value, defaults to PHYSICAL if unrecognized
+ */
+static DamageType string_to_damage_type(const std::string& str) {
+    if (str == "magical" || str == "magic") {
+        return DamageType::MAGICAL;
+    } else if (str == "true_damage" || str == "true") {
+        return DamageType::TRUE_DAMAGE;
+    }
+    // Default to PHYSICAL for unrecognized or empty strings
+    return DamageType::PHYSICAL;
+}
 
 /**
  * Convenience macro. Loads the attribute from the node if the node has it, and sets it in the component.
@@ -16,6 +32,21 @@
         pugi::xml_attribute loaded = node.attribute(#attr);    \
         if(!loaded.empty()) {                                  \
             comp->attr = loaded.as_##as();                     \
+        }                                                      \
+    }
+
+/**
+ * Convenience macro for loading enum attributes from XML.
+ * @param node A pugi::xml_node which (maybe) has the attribute
+ * @param comp The Component in which to set the value of the attribute
+ * @param attr The attribute to load. Must match exactly both the attribute name in the xml and the property in the Component.
+ * @param converter A function that converts string to the enum type
+ */
+#define LOAD_ENUM_ATTRIBUTE(node, comp, attr, converter)       \
+    {                                                          \
+        pugi::xml_attribute loaded = node.attribute(#attr);    \
+        if(!loaded.empty()) {                                  \
+            comp->attr = converter(loaded.as_string());        \
         }                                                      \
     }
 
@@ -47,7 +78,6 @@ EntityTemplate DataLoader::load_entity_template(std::string file_name) {
     pugi::xml_node movementNode = rootNode.child("movement");
     if(movementNode != NULL) {
         std::shared_ptr<Movement> movement = std::make_shared<Movement>();
-        LOAD_ATTRIBUTE(movementNode, movement, move_speed, float)
         temp.component_templates.push_back(movement);
     }
     
@@ -71,6 +101,9 @@ EntityTemplate DataLoader::load_entity_template(std::string file_name) {
         LOAD_ATTRIBUTE(statsNode, stats, attack_range, float)
         LOAD_ATTRIBUTE(statsNode, stats, attack_speed, float)
         // TODO what to do about enums (like DamageType auto_damage_type)? - ploinky 14/11/2025
+        //      |
+        // This v -- cmkrist 16/11/2025
+        LOAD_ENUM_ATTRIBUTE(statsNode, stats, auto_damage_type, string_to_damage_type)
         LOAD_ATTRIBUTE(statsNode, stats, crit_chance, float)
         LOAD_ATTRIBUTE(statsNode, stats, crit_bonus, int)
         LOAD_ATTRIBUTE(statsNode, stats, true_bonus, int)
