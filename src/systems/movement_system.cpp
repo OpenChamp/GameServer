@@ -64,6 +64,45 @@ void MovementSystem::update(const SystemContext& ctx) {
             continue;
         }
 
+        if(EntityStateComponent* state_comp = entity->get_component<EntityStateComponent>()) {
+            if(state_comp->current_state == EntityState::MOVING && !state_comp->target_positions.empty()) {
+                Vec2 current_pos = movement->position;
+                Vec2 target_pos = state_comp->target_positions.at(0);
+                Vec2 direction = target_pos - current_pos;
+                float distance = direction.length();
+            
+                constexpr float TARGET_THRESHOLD = 0.5f;
+                
+                if (distance < TARGET_THRESHOLD) {
+                    // Reached target, delete from target vector
+                    state_comp->target_positions.erase(state_comp->target_positions.begin());
+                    continue;
+                }
+            
+                // Normalize direction and apply speed
+                float move_speed = stats->move_speed;
+                float distance_to_move = move_speed * (ctx.delta_time_ms / 1000.0f);
+            
+                Vec2 new_position;
+                if (distance_to_move >= distance) {
+                    // Move directly to waypoint
+                    new_position = target_pos;
+                } else {
+                    // Move towards waypoint
+                    Vec2 normalized = direction.normalized();
+                    new_position = current_pos + (normalized * distance_to_move);
+                }
+                
+                // Check for collision with other entities
+                if (!has_collision(*entity, new_position, ctx.entity_manager)) {
+                    movement->position = new_position;
+                }
+
+                continue;
+            }
+        }
+
+
         // Update stuck detection for entities with pathfinding
         if (pathfinding) {
             float delta_time_ms = ctx.delta_time_ms;

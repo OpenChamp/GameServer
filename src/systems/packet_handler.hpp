@@ -62,6 +62,15 @@ private:
     bool handle_player_ready_packet(const std::string& client_id, const uint8_t* data, size_t length);
     
     /**
+     * Handle PLAYER_MOVE packet.
+     * Finds the Players entity and moves it towards the position supplied by the player.
+     * @param client_id Source client identifier
+     * @param data Packet bytes
+     * @param length Packet length in bytes
+     * @return true if handled successfully
+     */
+    bool handle_player_move_packet(const std::string& client_id, const uint8_t* data, size_t length);
+    /**
      * Handle other packet types (extensible for future packets).
      * @param client_id Source client identifier
      * @param packet_type Type of packet received

@@ -4,6 +4,7 @@
 #include "services/network_service.hpp"
 #include "systems/packet_validator.hpp"
 #include "components/readiness.hpp"
+#include "components/entity_state.hpp"
 #include "components/network_metadata.hpp"
 #include <log.hpp>
 
@@ -42,7 +43,9 @@ void PacketHandler::handle_packet(const std::string& client_id, const uint8_t* d
         case PACKET_TYPE::PLAYER_READY:
             handle_player_ready_packet(client_id, data, length);
             break;
-            
+        case PACKET_TYPE::PLAYER_MOVE:
+            handle_player_move_packet(client_id, data, length);
+            break;
         default:
             handle_other_packets(client_id, (uint8_t)packet_type, data, length);
             break;
@@ -67,6 +70,31 @@ bool PacketHandler::handle_player_ready_packet(const std::string& client_id, con
     // Note: Game start transition logic should be handled by GameServer/GameplayCoordinator
     // This handler just processes the packet and updates state
     
+    return true;
+}
+
+bool PacketHandler::handle_player_move_packet(const std::string& client_id, const uint8_t* data, size_t length) {
+    std::optional<Vec2> target_position = PacketValidator::extract_move_target_position(data, length);
+
+    if(!target_position.has_value()) {
+        LOG_WARN("Received invalid PLAYER_MOVE packet");
+        return false;
+    }
+
+    EntityID ent_id = player_manager_->get_champion_entity_id(player_manager_->get_player_entity_id(client_id), *entity_manager_);
+    Entity* entity = entity_manager_->get_entity(ent_id);
+
+    if(!entity) {
+        LOG_WARN("Received valid PLAYER_MOVE packet but client %s does not have a valid entity", client_id);
+        return false;
+    }
+
+    if(EntityStateComponent* ent_state = entity->get_component<EntityStateComponent>()) {
+        ent_state->current_state = EntityState::MOVING;
+        ent_state->target_positions.clear();
+        ent_state->target_positions.push_back(target_position.value());
+    }
+
     return true;
 }
 
