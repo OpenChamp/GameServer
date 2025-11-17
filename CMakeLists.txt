@@ -59,6 +59,7 @@ set(GAMESERVER_SOURCES
 	src/systems/map_system.cpp
 	src/systems/combat_system.cpp
 	src/systems/movement_system.cpp
+	src/systems/network_sync_system.cpp
 	src/systems/serialization_system.cpp
 	src/systems/wave_system.cpp
 )

@@ -7,5 +7,5 @@ struct ExperienceComponent : public Component {
     float required_exp = 1.0f;       // Experience required for next level
     float exp_growth_rate = 1.2f;    // Growth rate for required experience per level
 
-    COMPONENT_TYPE_ID(ExperienceComponent, 2010)
+    COMPONENT_TYPE_ID(ExperienceComponent, 2011)
 };

@@ -4,6 +4,7 @@
 #include <string>
 #include <map>
 
+#include <component_registry.hpp>
 #include <components/movement.hpp>
 #include <components/pathfinding.hpp>
 #include <components/stats.hpp>

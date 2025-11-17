@@ -3,6 +3,7 @@
 #include <filesystem>
 
 #include <libs/pugixml.hpp>
+#include <component_registry.hpp>
 #include <components/stats.hpp>
 
 /**
@@ -54,6 +55,9 @@ static DamageType string_to_damage_type(const std::string& str) {
 EntityTemplate DataLoader::load_entity_template(std::string file_name) {
     EntityTemplate temp;
 
+    // NOTE: Component type IDs should match those defined in src/component_registry.hpp
+    // See ComponentTypes namespace for authoritative type ID assignments.
+    
     // TODO should probably not let pugi load the file for us; thinking .pak files etc... - ploinky 14/11/2025
     pugi::xml_document doc;
     pugi::xml_parse_status status = doc.load_file(file_name.c_str()).status;
