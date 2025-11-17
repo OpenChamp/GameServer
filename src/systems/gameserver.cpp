@@ -39,9 +39,13 @@ ERROR_CODE GameServer::initialize() {
         LOG_ERROR("Failed to load map");
         return ERROR_CODE::ERROR_ENET_CREATION_FAILED;
     }
+    
+    // Initialize Navigation FIRST before moving map
+    navigation_service_ = std::make_unique<NavigationService>(map_opt.value());
+    
+    // Now create the pointer copy for map_pointer
     map_pointer_ = std::make_unique<Map>(std::move(map_opt.value()));
-    // Initialize Navigation
-    navigation_service_ = std::make_unique<NavigationService>(std::move(map_opt.value()));
+    
     // Initialize Network
     network_service_.on_client_connected = [this](std::string client_id) { on_client_connect(client_id); };
     network_service_.on_client_disconnected = [this](std::string client_id) { on_client_disconnect(client_id); };
@@ -51,8 +55,10 @@ ERROR_CODE GameServer::initialize() {
         LOG_ERROR("Failed to start network service");
         return net_result;
     }
-    // Initialize Wave System
-    wave_system_ = std::make_unique<WaveSystem>(&entity_manager_, &network_service_);
+    
+    // Initialize Wave System with navigation and map
+    wave_system_ = std::make_unique<WaveSystem>(&entity_manager_, &network_service_, navigation_service_.get(), map_pointer_.get());
+    
     return ERROR_CODE::ERROR_NONE;
 }
 
@@ -78,20 +84,17 @@ void GameServer::run() {
 
 void GameServer::frame_tick() {
     float delta_time_ms = frame_timer_.frame_duration_in_ms();
+    float delta_time_s = delta_time_ms / 1000.0f;
+    
+    // Update waves
     wave_system_->tick(delta_time_ms);
-    // Brain Logic -- cmkrist 15/11/2025
+    
+    // Update entity movement
+    movement_system_.update(entity_manager_, delta_time_s, navigation_service_.get(), map_pointer_.get());
+    
+    // Synchronize entity state to clients
     if (current_state_ == GAME_STATE::ONGOING) {
-        // Update AI for all active entities
-        std::unordered_map<EntityID, Entity>& entities = entity_manager_.get_all_entities();
-        for (auto& pair : entities) {
-            Entity& entity = pair.second;
-            // Just send their positions for now -- cmkrist 15/11/2025
-            if (entity.has_component<Movement>()) {
-                Movement* move_comp = entity.get_component<Movement>();
-                std::vector<uint8_t> packet = SerializationSystem::serialize_entity_position(entity.get_id(), move_comp->position);
-                network_service_.broadcast_packet(packet);
-            }
-        }
+        network_sync_system_.update(entity_manager_, &network_service_);
     }
 }
 

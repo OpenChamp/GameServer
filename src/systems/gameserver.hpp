@@ -18,6 +18,7 @@
 #include "entity_manager.hpp"
 #include "map_system.hpp"
 #include "movement_system.hpp"
+#include "network_sync_system.hpp"
 #include "serialization_system.hpp"
 #include "wave_system.hpp"
 // Services
@@ -115,6 +116,8 @@ private:
     NetworkService network_service_;
     // Systems
     std::unique_ptr<WaveSystem> wave_system_;
+    MovementSystem movement_system_;
+    NetworkSyncSystem network_sync_system_;
 
     // Server configuration
 
