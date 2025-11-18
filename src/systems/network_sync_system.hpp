@@ -84,13 +84,19 @@ private:
     bool has_entity_changed(const Entity& entity, uint32_t current_frame) const;
     
     /**
-     * Serialize changed entity data into a packet.
+     * Serialize changed entity data into multiple packets (one per component type).
      * Only includes data that has actually changed (delta compression).
+     * 
+     * Returns one packet per component that changed:
+     *   - Position packet if entity moved
+     *   - Stats packet if health/mana/level changed
+     *   - Additional packets as new components are added
+     * 
      * @param entity_id ID of entity that changed
      * @param entity The entity
      * @param send_full_state If true, sends all data instead of just changes
-     * @return Serialized packet bytes ready to send to network
+     * @return Vector of serialized packets, one per changed component
      */
-    std::vector<uint8_t> serialize_entity_update(EntityID entity_id, const Entity& entity, 
-                                                  bool send_full_state) const;
+    std::vector<std::vector<uint8_t>> serialize_entity_update(EntityID entity_id, const Entity& entity, 
+                                                               bool send_full_state) const;
 };
