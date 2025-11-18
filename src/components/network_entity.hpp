@@ -38,7 +38,7 @@ struct NetworkEntityComponent : public Component {
     // === Last Known State (for delta detection) ===
     Vec2 last_synced_position = Vec2(0.0f, 0.0f);  // Position at last sync
     EntityState last_synced_state = EntityState::SPAWNED;  // State at last sync
-    uint32_t last_synced_health = 0;                // Health at last sync (if applicable)
+    uint32_t last_synced_stats_hash = 0;            // Hash of stats at last sync (for any stats component)
     
     // === Bandwidth Optimization ===
     static constexpr uint32_t MIN_POSITION_CHANGE = 1;  // Only sync if moved 1 unit
@@ -66,16 +66,26 @@ struct NetworkEntityComponent : public Component {
     }
     
     /**
+     * Check if any stats have changed since last sync.
+     * Uses a simple hash of critical stats values for efficient comparison.
+     * @param stats_hash Hash of current stats (health, mana, level combined)
+     * @return true if stats have changed
+     */
+    bool has_stats_changed(uint32_t stats_hash) const {
+        return stats_hash != last_synced_stats_hash;
+    }
+    
+    /**
      * Mark this entity as fully synced with the given state.
      * @param position Current position
      * @param state Current state
-     * @param health Current health (optional)
+     * @param stats_hash Hash of current stats for change detection
      * @param current_frame Frame number
      */
-    void mark_synced(const Vec2& position, EntityState state, uint32_t health, uint32_t current_frame) {
+    void mark_synced(const Vec2& position, EntityState state, uint32_t stats_hash, uint32_t current_frame) {
         last_synced_position = position;
         last_synced_state = state;
-        last_synced_health = health;
+        last_synced_stats_hash = stats_hash;
         last_sync_frame = current_frame;
         force_full_sync_next_frame = false;
     }
