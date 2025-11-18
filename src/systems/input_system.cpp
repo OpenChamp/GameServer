@@ -1,6 +1,9 @@
 #include "input_system.hpp"
 #include "entity_manager.hpp"
 #include "components/entity_state.hpp"
+#include "components/movement.hpp"
+#include "components/pathfinding.hpp"
+#include "services/navigation_service.hpp"
 #include <log.hpp>
 
 void InputSystem::queue_movement_input(EntityID entity_id, const Vec2& target_position) {
@@ -20,7 +23,7 @@ void InputSystem::update(const SystemContext& ctx) {
             continue;
         }
         
-        if (process_movement_input(*entity, input.target_position)) {
+        if (process_movement_input(*entity, input.target_position, ctx)) {
             LOG_DEBUG("Successfully processed movement input for entity %u", input.entity_id);
         } else {
             LOG_WARN("Failed to process movement input for entity %u", input.entity_id);
@@ -30,20 +33,60 @@ void InputSystem::update(const SystemContext& ctx) {
     }
 }
 
-bool InputSystem::process_movement_input(Entity& entity, const Vec2& target_position) {
+bool InputSystem::process_movement_input(Entity& entity, const Vec2& target_position, const SystemContext& ctx) {
     EntityStateComponent* ent_state = entity.get_component<EntityStateComponent>();
+    Movement* movement = entity.get_component<Movement>();
     
     if (!ent_state) {
         LOG_WARN("Entity %u missing EntityStateComponent", entity.get_id());
         return false;
     }
     
-    // Queue the movement target
+    if (!movement) {
+        LOG_WARN("Entity %u missing Movement component", entity.get_id());
+        return false;
+    }
+    
+    // Attempt to use pathfinding if NavigationService and Map are available
+    if (ctx.navigation_service && ctx.map) {
+        // Ensure entity has PathfindingComponent
+        PathfindingComponent* pathfinding = entity.get_component<PathfindingComponent>();
+        if (!pathfinding) {
+            auto pf = std::make_unique<PathfindingComponent>();
+            entity.add_component(std::move(pf));
+            pathfinding = entity.get_component<PathfindingComponent>();
+        }
+        
+        // Request pathfinding path
+        Vec3 start = Vec3(movement->position.x, 0.0f, movement->position.y);
+        Vec3 goal = Vec3(target_position.x, 0.0f, target_position.y);
+        
+        PathRequest request;
+        request.entity_id = entity.get_id();
+        request.current_position = start;
+        request.destination = goal;
+        request.entity_pathing_radius = 0.5f;
+        
+        if (ctx.navigation_service->MakeRequest(request)) {
+            // Transition to pathfinding state
+            ent_state->current_state = EntityState::PATHFINDING_WAITING;
+            ent_state->state_duration_ms = 0.0f;
+            ent_state->target_positions.clear();
+            
+            LOG_INFO("Entity %u requested pathfinding to (%.2f, %.2f)", entity.get_id(), target_position.x, target_position.y);
+            return true;
+        } else {
+            LOG_WARN("Entity %u failed to request pathfinding", entity.get_id());
+            // Fall through to direct movement as fallback
+        }
+    }
+    
+    // Fallback: Use direct movement if pathfinding unavailable
+    LOG_DEBUG("Entity %u using direct movement to (%.2f, %.2f) (pathfinding unavailable)", 
+             entity.get_id(), target_position.x, target_position.y);
     ent_state->current_state = EntityState::MOVING;
     ent_state->target_positions.clear();
     ent_state->target_positions.push_back(target_position);
-    
-    LOG_INFO("Entity %u queued to move to (%.2f, %.2f)", entity.get_id(), target_position.x, target_position.y);
     
     return true;
 }

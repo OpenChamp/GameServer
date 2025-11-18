@@ -75,11 +75,13 @@ private:
     
     /**
      * Process a single movement input request.
-     * Applies the movement to the entity's state.
+     * Uses pathfinding (A*) to find a navmesh-aware path to avoid holes.
+     * Falls back to direct movement if pathfinding fails.
      * 
      * @param entity Entity to move
      * @param target_position Target position
+     * @param ctx System context with NavigationService and Map
      * @return true if input was processed successfully
      */
-    static bool process_movement_input(Entity& entity, const Vec2& target_position);
+    static bool process_movement_input(Entity& entity, const Vec2& target_position, const SystemContext& ctx);
 };
