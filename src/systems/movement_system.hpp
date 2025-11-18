@@ -4,6 +4,8 @@
 #include "components/stats.hpp"
 #include "components/movement.hpp"
 #include "components/map.hpp"
+#include "components/pathfinding.hpp"
+#include "components/entity_state.hpp"
 #include "math.hpp"
 #include "system_context.hpp"
 #include <vector>
@@ -23,6 +25,58 @@ public:
     void update(const SystemContext& ctx);
     
 private:
+    // ========================================================================
+    // Phase processors
+    // ========================================================================
+    
+    /**
+     * Process pathfinding-related updates (results and retries).
+     */
+    void process_pathfinding_phase(const SystemContext& ctx);
+    
+    /**
+     * Process completed pathfinding results from NavigationService.
+     */
+    static void process_completed_paths(const SystemContext& ctx);
+    
+    /**
+     * Retry pending pathfinding requests for stuck entities.
+     */
+    static void retry_stuck_entities(const SystemContext& ctx);
+    
+    // ========================================================================
+    // Entity movement handlers
+    // ========================================================================
+    
+    /**
+     * Update a single entity's movement based on its type.
+     */
+    void update_entity_movement(const SystemContext& ctx, Entity& entity);
+    
+    /**
+     * Update direct movement (player movement to target positions).
+     */
+    static void update_direct_movement(const SystemContext& ctx, Entity& entity, Movement& movement, Stats& stats, EntityStateComponent& state_comp);
+    
+    /**
+     * Update stuck detection and trigger repath if needed.
+     */
+    void update_stuck_detection(const SystemContext& ctx, Entity& entity, Movement& movement, PathfindingComponent& pathfinding, EntityStateComponent* entity_state);
+    
+    /**
+     * Update waypoint-based movement (minion path following).
+     */
+    static void update_waypoint_movement(const SystemContext& ctx, Entity& entity, Movement& movement, Stats& stats, PathfindingComponent& pathfinding, EntityStateComponent* entity_state);
+    
+    /**
+     * Request path to next spawnpoint when current waypoints exhausted.
+     */
+    static void request_path_to_next_spawnpoint(const SystemContext& ctx, Entity& entity, PathfindingComponent& pathfinding, EntityStateComponent* entity_state);
+    
+    // ========================================================================
+    // Utility functions
+    // ========================================================================
+    
     /**
      * Calculate distance between two 3D points.
      * @param a First point
