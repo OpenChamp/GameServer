@@ -1,6 +1,7 @@
 #pragma once
 
 #include "system_context.hpp"
+#include "input_system.hpp"
 #include "wave_system.hpp"
 #include "movement_system.hpp"
 #include "network_sync_system.hpp"
@@ -69,6 +70,12 @@ public:
     void update(const SystemContext& ctx);
     
     /**
+     * Get reference to input system.
+     * @return Reference to InputSystem
+     */
+    InputSystem& get_input_system() { return input_system_; }
+    
+    /**
      * Get reference to wave system (for direct initialization if needed).
      * @return Reference to WaveSystem
      */
@@ -93,6 +100,7 @@ public:
     CombatSystem& get_combat_system() { return combat_system_; }
 
 private:
+    InputSystem input_system_;
     std::unique_ptr<WaveSystem> wave_system_;
     MovementSystem movement_system_;
     NetworkSyncSystem network_sync_system_;

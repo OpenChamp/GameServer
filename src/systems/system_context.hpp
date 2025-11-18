@@ -6,6 +6,7 @@
 // Forward declarations to avoid circular dependencies
 class NavigationService;
 class NetworkService;
+class InputSystem;
 struct Map;
 
 /**
@@ -38,6 +39,7 @@ struct SystemContext {
     EntityManager& entity_manager;          // Required: access to all entities
     
     // === Optional Services ===
+    InputSystem* input_system = nullptr;            // For processing player input
     NavigationService* navigation_service = nullptr;  // For pathfinding requests
     NetworkService* network_service = nullptr;        // For network broadcasting
     const Map* map = nullptr;                          // For map data queries

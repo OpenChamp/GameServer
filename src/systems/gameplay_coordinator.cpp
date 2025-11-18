@@ -15,6 +15,9 @@ void GameplayCoordinator::initialize_wave_system(EntityManager* entity_manager, 
 void GameplayCoordinator::update(const SystemContext& ctx) {
     // Execute systems in dependency order
     
+    // INPUT SYSTEMS
+    input_system_.update(ctx);
+    
     // ENGINE SYSTEMS
     wave_system_->update(ctx);
 

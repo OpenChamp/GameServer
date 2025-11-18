@@ -1,6 +1,7 @@
 #include "packet_handler.hpp"
 #include "player_manager.hpp"
 #include "entity_manager.hpp"
+#include "input_system.hpp"
 #include "services/network_service.hpp"
 #include "systems/packet_validator.hpp"
 #include "components/readiness.hpp"
@@ -10,10 +11,12 @@
 
 PacketHandler::PacketHandler(PlayerManager* player_manager, 
                            EntityManager* entity_manager,
-                           NetworkService* network_service)
+                           NetworkService* network_service,
+                           InputSystem* input_system)
     : player_manager_(player_manager)
     , entity_manager_(entity_manager)
-    , network_service_(network_service) {
+    , network_service_(network_service)
+    , input_system_(input_system) {
 }
 
 void PacketHandler::handle_packet(const std::string& client_id, const uint8_t* data, size_t length) {
@@ -89,13 +92,15 @@ bool PacketHandler::handle_player_move_packet(const std::string& client_id, cons
         return false;
     }
 
-    if(EntityStateComponent* ent_state = entity->get_component<EntityStateComponent>()) {
-        ent_state->current_state = EntityState::MOVING;
-        ent_state->target_positions.clear();
-        ent_state->target_positions.push_back(target_position.value());
+    // Queue the movement input through InputSystem
+    if (input_system_) {
+        input_system_->queue_movement_input(ent_id, target_position.value());
+        LOG_DEBUG("Queued movement input for entity %u from client %s", ent_id, client_id.c_str());
+        return true;
+    } else {
+        LOG_ERROR("InputSystem not initialized");
+        return false;
     }
-
-    return true;
 }
 
 bool PacketHandler::handle_other_packets(const std::string& client_id, uint8_t packet_type, 
