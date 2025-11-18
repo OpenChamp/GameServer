@@ -11,15 +11,10 @@
         max_health="100"
         health="100"
         move_speed="4.0"
+        physical_power="10"
+        armor="5"
+        attack_range="1.5"
+        attack_speed="1.0"
     />
     <pathfinding />
-    <!-- <brain
-        priorities = ["attack_nearest_enemy", "move_to_target"]
-        target_type = "enemy"
-        target_range = "5.0"
-
-    />
-    <extend_priority
-        priorities = ["defend_self", "flee_from_danger"]
-    /> -->
 </entity>
