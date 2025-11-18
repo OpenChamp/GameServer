@@ -47,6 +47,24 @@ bool InputSystem::process_movement_input(Entity& entity, const Vec2& target_posi
         return false;
     }
     
+    // Validate target position is within map bounds
+    if (ctx.map) {
+        float half_width = ctx.map->size.x / 2.0f;
+        float half_height = ctx.map->size.y / 2.0f;
+        float min_x = ctx.map->offset.x - half_width;
+        float max_x = ctx.map->offset.x + half_width;
+        float min_y = ctx.map->offset.y - half_height;
+        float max_y = ctx.map->offset.y + half_height;
+        
+        if (target_position.x < min_x || target_position.x > max_x ||
+            target_position.y < min_y || target_position.y > max_y) {
+            LOG_WARN("Entity %u movement target (%.2f, %.2f) is out of bounds [%.1f-%.1f, %.1f-%.1f]",
+                     entity.get_id(), target_position.x, target_position.y,
+                     min_x, max_x, min_y, max_y);
+            return false;
+        }
+    }
+    
     // Attempt to use pathfinding if NavigationService and Map are available
     if (ctx.navigation_service && ctx.map) {
         // Ensure entity has PathfindingComponent
