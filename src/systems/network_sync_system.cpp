@@ -5,29 +5,36 @@
 #include "components/network_entity.hpp"
 #include "components/stats.hpp"
 #include <log.hpp>
+#include <sstream>
+#include <iomanip>
 
-// Helper function to compute a simple hash of stats for change detection
-static uint32_t compute_stats_hash(const Stats& stats) {
-    // Simple hash combining critical stats
-    // Using bit shifts and XOR to mix the values
-    uint32_t hash = 0;
+// Helper function to create stat change packets only for changed fields
+static std::vector<std::vector<uint8_t>> create_stat_change_packets(uint32_t entity_id, const Stats& current_stats, const Stats& last_synced_stats) {
+    std::vector<std::vector<uint8_t>> packets;
     
-    // Hash health and max_health (important for gameplay)
-    uint32_t health_bits = static_cast<uint32_t>(stats.health * 100.0f);
-    uint32_t max_health_bits = static_cast<uint32_t>(stats.max_health * 100.0f);
-    hash ^= health_bits;
-    hash ^= (max_health_bits << 8);
+    // Helper lambda to create a stat packet if value changed
+    auto add_if_changed = [&](const std::string& stat_name, float current_val, float last_val) {
+        if (current_val != last_val) {
+            std::ostringstream oss;
+            oss << std::fixed << std::setprecision(6) << current_val;
+            packets.push_back(SerializationSystem::serialize_entity_stat_change(entity_id, stat_name, oss.str()));
+        }
+    };
     
-    // Hash mana and max_mana
-    uint32_t mana_bits = static_cast<uint32_t>(stats.mana * 100.0f);
-    uint32_t max_mana_bits = static_cast<uint32_t>(stats.max_mana * 100.0f);
-    hash ^= (mana_bits << 16);
-    hash ^= (max_mana_bits << 24);
+    auto add_if_changed_int = [&](const std::string& stat_name, int current_val, int last_val) {
+        if (current_val != last_val) {
+            packets.push_back(SerializationSystem::serialize_entity_stat_change(entity_id, stat_name, std::to_string(current_val)));
+        }
+    };
     
-    // Hash level
-    hash ^= stats.level;
+    // Check each stat and only send packets for changed values
+    add_if_changed("health", current_stats.health, last_synced_stats.health);
+    add_if_changed("max_health", current_stats.max_health, last_synced_stats.max_health);
+    add_if_changed("mana", current_stats.mana, last_synced_stats.mana);
+    add_if_changed("max_mana", current_stats.max_mana, last_synced_stats.max_mana);
+    add_if_changed_int("level", current_stats.level, last_synced_stats.level);
     
-    return hash;
+    return packets;
 }
 
 void NetworkSyncSystem::update(const SystemContext& ctx) {
@@ -105,9 +112,8 @@ void NetworkSyncSystem::update(const SystemContext& ctx) {
             
             Vec2 pos = move ? move->position : Vec2(0, 0);
             EntityState state_val = state ? state->current_state : EntityState::SPAWNED;
-            uint32_t stats_hash = stats ? compute_stats_hash(*stats) : 0;
             
-            net_comp->mark_synced(pos, state_val, stats_hash, current_frame_);
+            net_comp->mark_synced(pos, state_val, stats, current_frame_);
             LOG_DEBUG("Synced entity %u (is_first_sync=%s) at position (%.1f, %.1f), state=%d, packets=%zu", 
                      entity->get_id(), is_first_sync ? "true" : "false", pos.x, pos.y, (int)state_val, packets.size());
         } else {
@@ -197,18 +203,35 @@ std::vector<std::vector<uint8_t>> NetworkSyncSystem::serialize_entity_update(Ent
     }
     
     // ========================================================================
-    // Stats Update Packet (Health, Mana, Level)
+    // Stats Update Packets (Each stat sent individually)
     // ========================================================================
     if (stats) {
         if (send_full_state || !net_comp) {
-            // Full state sync - send health/mana/level
-            packets.push_back(SerializationSystem::serialize_entity_stats(entity_id, *stats));
-        } else {
-            // Delta sync - check if stats changed using generic hash comparison
-            uint32_t current_stats_hash = compute_stats_hash(*stats);
-            if (net_comp->has_stats_changed(current_stats_hash)) {
-                packets.push_back(SerializationSystem::serialize_entity_stats(entity_id, *stats));
-            }
+            // Full state sync - send each stat as individual packet
+            std::ostringstream oss;
+            oss << std::fixed << std::setprecision(6) << stats->health;
+            packets.push_back(SerializationSystem::serialize_entity_stat_change(entity_id, "health", oss.str()));
+            
+            oss.str("");
+            oss.clear();
+            oss << std::fixed << std::setprecision(6) << stats->max_health;
+            packets.push_back(SerializationSystem::serialize_entity_stat_change(entity_id, "max_health", oss.str()));
+            
+            oss.str("");
+            oss.clear();
+            oss << std::fixed << std::setprecision(6) << stats->mana;
+            packets.push_back(SerializationSystem::serialize_entity_stat_change(entity_id, "mana", oss.str()));
+            
+            oss.str("");
+            oss.clear();
+            oss << std::fixed << std::setprecision(6) << stats->max_mana;
+            packets.push_back(SerializationSystem::serialize_entity_stat_change(entity_id, "max_mana", oss.str()));
+            
+            packets.push_back(SerializationSystem::serialize_entity_stat_change(entity_id, "level", std::to_string(stats->level)));
+        } else if (net_comp->has_stats_changed(*stats)) {
+            // Delta sync - only send packets for stats that changed
+            auto stat_packets = create_stat_change_packets(entity_id, *stats, *net_comp->last_synced_stats);
+            packets.insert(packets.end(), stat_packets.begin(), stat_packets.end());
         }
     }
     
