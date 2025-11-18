@@ -2,6 +2,7 @@
 
 #include "system_context.hpp"
 #include "input_system.hpp"
+#include "collision_system.hpp"
 #include "wave_system.hpp"
 #include "movement_system.hpp"
 #include "network_sync_system.hpp"
@@ -23,8 +24,9 @@
  * SYSTEM UPDATE ORDER (important for correctness):
  *   1. WaveSystem - Spawns new entities for this frame
  *   2. MovementSystem - Updates entity positions based on paths
- *   3. CombatSystem - Resolves damage and effects
- *   4. NetworkSyncSystem - Sends state updates to clients
+ *   3. CollisionSystem - Resolves overlaps and pushes entities apart
+ *   4. CombatSystem - Resolves damage and effects
+ *   5. NetworkSyncSystem - Sends state updates to clients
  * 
  * USAGE:
  *   GameplayCoordinator gameplay;
@@ -82,6 +84,12 @@ public:
     WaveSystem& get_wave_system() { return *wave_system_; }
     
     /**
+     * Get reference to collision system.
+     * @return Reference to CollisionSystem
+     */
+    CollisionSystem& get_collision_system() { return collision_system_; }
+    
+    /**
      * Get reference to movement system.
      * @return Reference to MovementSystem
      */
@@ -102,6 +110,7 @@ public:
 private:
     InputSystem input_system_;
     std::unique_ptr<WaveSystem> wave_system_;
+    CollisionSystem collision_system_;
     MovementSystem movement_system_;
     NetworkSyncSystem network_sync_system_;
     CombatSystem combat_system_;

@@ -1,4 +1,5 @@
 #include "movement_system.hpp"
+#include "collision_system.hpp"
 #include "entity_manager.hpp"
 #include "services/navigation_service.hpp"
 #include <components/pathfinding.hpp>
@@ -93,10 +94,8 @@ void MovementSystem::update(const SystemContext& ctx) {
                     new_position = current_pos + (normalized * distance_to_move);
                 }
                 
-                // Check for collision with other entities
-                if (!has_collision(*entity, new_position, ctx.entity_manager)) {
-                    movement->position = new_position;
-                }
+                // Always move - CollisionSystem runs after to handle any overlaps
+                movement->position = new_position;
 
                 continue;
             }
@@ -195,26 +194,11 @@ void MovementSystem::update(const SystemContext& ctx) {
                 new_position = current_pos + (normalized * distance_to_move);
             }
             
-            // Check for collision with other entities
-            if (!has_collision(*entity, new_position, ctx.entity_manager)) {
-                movement->position = new_position;
-            } else {
-                // If direct path is blocked, try to move sideways to avoid collision
-                // TODO: Make this better with proper pathfinding around obstacles
-                // Maybe move to nearest point along a circle around the obstacle, then recalculate path?
-                Vec2 perpendicular = Vec2(-direction.y, direction.x).normalized();
-                Vec2 sideways_left = current_pos + (perpendicular * distance_to_move);
-                Vec2 sideways_right = current_pos + (perpendicular * -distance_to_move);
-                
-                if (!has_collision(*entity, sideways_left, ctx.entity_manager)) {
-                    movement->position = sideways_left;
-                } else if (!has_collision(*entity, sideways_right, ctx.entity_manager)) {
-                    movement->position = sideways_right;
-                }
-                // If both sideways moves are blocked, just don't move (will accumulate stuck time)
-            }
+            // Always move - CollisionSystem runs after to handle any overlaps
+            movement->position = new_position;
         }
     }
+    
 }
 
 bool MovementSystem::has_collision(const Entity& entity, const Vec2& proposed_position, EntityManager& entity_manager) {

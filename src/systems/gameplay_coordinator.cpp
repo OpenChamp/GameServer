@@ -21,11 +21,14 @@ void GameplayCoordinator::update(const SystemContext& ctx) {
     // ENGINE SYSTEMS
     wave_system_->update(ctx);
 
-    // ENTITY SYSTEMS
+    // MOVEMENT & PHYSICS SYSTEMS
     movement_system_.update(ctx);
+    collision_system_.update(ctx);
+    
+    // COMBAT SYSTEMS
     combat_system_.update(ctx);
     // PLAYER SYSTEMS
 
-    // 5. Synchronize to clients
+    // 6. Synchronize to clients
     network_sync_system_.update(ctx);
 }

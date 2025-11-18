@@ -57,6 +57,7 @@ set(GAMESERVER_SOURCES
 	src/systems/data_loader.cpp
 	src/systems/gameserver.cpp
 	src/systems/input_system.cpp
+	src/systems/collision_system.cpp
 	src/systems/map_system.cpp
 	src/systems/combat_system.cpp
 	src/systems/movement_system.cpp
@@ -96,6 +97,7 @@ set(GAMESERVER_HEADERS
 	src/systems/network_sync_system.hpp
 	src/systems/player_manager.hpp
 	src/systems/input_system.hpp
+	src/systems/collision_system.hpp
 	src/systems/system_context.hpp
 	src/systems/packet_handler.hpp
 	src/systems/gameplay_coordinator.hpp
