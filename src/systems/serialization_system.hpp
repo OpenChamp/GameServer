@@ -7,6 +7,9 @@
 #include <systems/math.hpp>
 #include <systems/packet_validator.hpp>
 
+// Forward declarations
+struct Stats;
+
 /**
  * Handles serialization of game packets into byte arrays.
  * All methods are static and return packets as std::vector<uint8_t>.
@@ -46,6 +49,14 @@ public:
      * @return Packet data as a vector of bytes
      */
     static std::vector<uint8_t> serialize_entity_spawn(uint32_t entity_id, const Vec2& position, uint8_t team_id, const std::string& entity_type);
+
+    /**
+     * Serialize an entity stats update packet (health, mana, level).
+     * @param entity_id The ID of the entity
+     * @param stats The Stats component containing health, mana, and level
+     * @return Packet data as a vector of bytes
+     */
+    static std::vector<uint8_t> serialize_entity_stats(uint32_t entity_id, const struct Stats& stats);
 
 private:
     /**

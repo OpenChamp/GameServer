@@ -1,4 +1,5 @@
 #include "serialization_system.hpp"
+#include "components/stats.hpp"
 
 std::vector<uint8_t> SerializationSystem::serialize_packet(PACKET_TYPE packet_type) {
     std::vector<uint8_t> packet_data;
@@ -84,4 +85,29 @@ void SerializationSystem::serialize_uint16_be(uint16_t value, std::vector<uint8_
 void SerializationSystem::serialize_float(float value, std::vector<uint8_t>& output) {
     uint32_t int_value = reinterpret_cast<uint32_t&>(value);
     serialize_uint32(int_value, output);
+}
+
+std::vector<uint8_t> SerializationSystem::serialize_entity_stats(uint32_t entity_id, const Stats& stats) {
+    std::vector<uint8_t> packet_data;
+    packet_data.push_back(static_cast<uint8_t>(PACKET_TYPE::ENTITY_STATS));
+    
+    // Entity ID (4 bytes, little-endian)
+    serialize_uint32(entity_id, packet_data);
+    
+    // Health (4 bytes float, little-endian)
+    serialize_float(stats.health, packet_data);
+    
+    // Max Health (4 bytes float, little-endian)
+    serialize_float(stats.max_health, packet_data);
+    
+    // Mana (4 bytes float, little-endian)
+    serialize_float(stats.mana, packet_data);
+    
+    // Max Mana (4 bytes float, little-endian)
+    serialize_float(stats.max_mana, packet_data);
+    
+    // Level (4 bytes int, little-endian as uint32_t)
+    serialize_uint32(static_cast<uint32_t>(stats.level), packet_data);
+    
+    return packet_data;
 }
