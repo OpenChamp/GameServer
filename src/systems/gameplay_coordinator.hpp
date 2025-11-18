@@ -66,10 +66,26 @@ public:
      *   2. MovementSystem::update() - Move entities
      *   3. CombatSystem::update() - Auto-attacks and damage
      *   4. NetworkSyncSystem::update() - Broadcast state
+     *   5. cleanup_dead_entities() - Remove entities marked for deletion
      * 
      * @param ctx System context containing entity manager and services
      */
     void update(const SystemContext& ctx);
+    
+    /**
+     * Clean up dead entities that have been synced to clients.
+     * Removes entities that have been in DEAD state for one frame,
+     * allowing clients to receive and process the death state before removal.
+     * @param entity_manager Reference to entity manager
+     */
+    void cleanup_dead_entities(EntityManager& entity_manager);
+    
+    /**
+     * Mark an entity for cleanup (removal after next network sync).
+     * Called when entity reaches DEAD state.
+     * @param entity_id ID of entity to mark for cleanup
+     */
+    void mark_for_cleanup(EntityID entity_id);
     
     /**
      * Get reference to input system.
@@ -114,4 +130,7 @@ private:
     MovementSystem movement_system_;
     NetworkSyncSystem network_sync_system_;
     CombatSystem combat_system_;
+    
+    // Entity cleanup tracking
+    std::vector<EntityID> entities_marked_for_cleanup_;  // Entities to remove next frame
 };
