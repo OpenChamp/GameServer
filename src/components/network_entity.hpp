@@ -3,7 +3,9 @@
 #include "component.hpp"
 #include "movement.hpp"
 #include "entity_state.hpp"
+#include "stats.hpp"
 #include <cstdint>
+#include <optional>
 
 /**
  * NetworkEntityComponent - Tracks network synchronization state
@@ -38,7 +40,7 @@ struct NetworkEntityComponent : public Component {
     // === Last Known State (for delta detection) ===
     Vec2 last_synced_position = Vec2(0.0f, 0.0f);  // Position at last sync
     EntityState last_synced_state = EntityState::SPAWNED;  // State at last sync
-    uint32_t last_synced_stats_hash = 0;            // Hash of stats at last sync (for any stats component)
+    std::optional<Stats> last_synced_stats;         // Stats at last sync (for change detection)
     
     // === Bandwidth Optimization ===
     static constexpr uint32_t MIN_POSITION_CHANGE = 1;  // Only sync if moved 1 unit
@@ -67,25 +69,35 @@ struct NetworkEntityComponent : public Component {
     
     /**
      * Check if any stats have changed since last sync.
-     * Uses a simple hash of critical stats values for efficient comparison.
-     * @param stats_hash Hash of current stats (health, mana, level combined)
+     * Directly compares current stats against cached version.
+     * @param current_stats Current stats component
      * @return true if stats have changed
      */
-    bool has_stats_changed(uint32_t stats_hash) const {
-        return stats_hash != last_synced_stats_hash;
+    bool has_stats_changed(const Stats& current_stats) const {
+        if (!last_synced_stats) {
+            return true;  // No cached stats, so it's a change
+        }
+        // Simple field-by-field comparison of critical fields
+        return current_stats.health != last_synced_stats->health ||
+               current_stats.max_health != last_synced_stats->max_health ||
+               current_stats.mana != last_synced_stats->mana ||
+               current_stats.max_mana != last_synced_stats->max_mana ||
+               current_stats.level != last_synced_stats->level;
     }
     
     /**
      * Mark this entity as fully synced with the given state.
      * @param position Current position
      * @param state Current state
-     * @param stats_hash Hash of current stats for change detection
+     * @param stats Current stats (for change detection)
      * @param current_frame Frame number
      */
-    void mark_synced(const Vec2& position, EntityState state, uint32_t stats_hash, uint32_t current_frame) {
+    void mark_synced(const Vec2& position, EntityState state, const Stats* stats, uint32_t current_frame) {
         last_synced_position = position;
         last_synced_state = state;
-        last_synced_stats_hash = stats_hash;
+        if (stats) {
+            last_synced_stats = *stats;
+        }
         last_sync_frame = current_frame;
         force_full_sync_next_frame = false;
     }
