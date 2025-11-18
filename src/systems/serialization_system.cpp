@@ -111,3 +111,31 @@ std::vector<uint8_t> SerializationSystem::serialize_entity_stats(uint32_t entity
     
     return packet_data;
 }
+
+std::vector<uint8_t> SerializationSystem::serialize_entity_stat_change(uint32_t entity_id, const std::string& stat_name, const std::string& stat_value) {
+    std::vector<uint8_t> packet_data;
+    packet_data.push_back(static_cast<uint8_t>(PACKET_TYPE::ENTITY_STATS));
+    
+    // Entity ID (4 bytes, little-endian)
+    serialize_uint32(entity_id, packet_data);
+    
+    // Stat name length (4 bytes, little-endian)
+    uint32_t name_length = static_cast<uint32_t>(stat_name.length());
+    serialize_uint32(name_length, packet_data);
+    
+    // Stat name string
+    for (char c : stat_name) {
+        packet_data.push_back(static_cast<uint8_t>(c));
+    }
+    
+    // Stat value length (4 bytes, little-endian)
+    uint32_t value_length = static_cast<uint32_t>(stat_value.length());
+    serialize_uint32(value_length, packet_data);
+    
+    // Stat value string
+    for (char c : stat_value) {
+        packet_data.push_back(static_cast<uint8_t>(c));
+    }
+    
+    return packet_data;
+}

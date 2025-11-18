@@ -101,6 +101,7 @@ void MovementSystem::update_entity_movement(const SystemContext& ctx, Entity& en
     }
     
     // Update pathfinding entities (minions following waypoints)
+    // TODO: Differentiate between minions and other pathfinding entities (AI Component?) -- cmkrist 18/11/2025
     if (pathfinding) {
         update_stuck_detection(ctx, entity, *movement, *pathfinding, state_comp);
         update_waypoint_movement(ctx, entity, *movement, *stats, *pathfinding, state_comp);
@@ -117,6 +118,14 @@ void MovementSystem::update_direct_movement(const SystemContext& ctx, Entity& en
     // Check if reached target
     if (distance < TARGET_THRESHOLD) {
         state_comp.target_positions.erase(state_comp.target_positions.begin());
+        
+        // Transition to IDLE when all targets are reached
+        // Separate system? -- cmkrist 18/11/2025
+        if (state_comp.target_positions.empty()) {
+            state_comp.current_state = EntityState::IDLE;
+            state_comp.state_duration_ms = 0.0f;
+            LOG_DEBUG("Entity %u reached destination, transitioning to IDLE", entity.get_id());
+        }
         return;
     }
     

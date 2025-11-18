@@ -51,12 +51,23 @@ public:
     static std::vector<uint8_t> serialize_entity_spawn(uint32_t entity_id, const Vec2& position, uint8_t team_id, const std::string& entity_type);
 
     /**
-     * Serialize an entity stats update packet (health, mana, level).
+     * Serialize an entity stats update packet.
      * @param entity_id The ID of the entity
      * @param stats The Stats component containing health, mana, and level
      * @return Packet data as a vector of bytes
      */
     static std::vector<uint8_t> serialize_entity_stats(uint32_t entity_id, const struct Stats& stats);
+
+    /**
+     * Serialize a single stat change packet.
+     * Efficient for syncing individual stat changes without full stats sync.
+     * Format: type(1) + entity_id(4) + stat_name_length(4) + stat_name + stat_value(4/8)
+     * @param entity_id The ID of the entity
+     * @param stat_name The name of the stat being changed (e.g., "health", "mana", "level")
+     * @param stat_value The new value as a string representation
+     * @return Packet data as a vector of bytes
+     */
+    static std::vector<uint8_t> serialize_entity_stat_change(uint32_t entity_id, const std::string& stat_name, const std::string& stat_value);
 
 private:
     /**
