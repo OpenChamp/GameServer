@@ -143,7 +143,7 @@ void MovementSystem::update_direct_movement(const SystemContext& ctx, Entity& en
 void MovementSystem::update_stuck_detection(const SystemContext& ctx, Entity& entity, 
                                            Movement& movement, PathfindingComponent& pathfinding, 
                                            EntityStateComponent* entity_state) {
-    float movement_distance = distance(movement.position, pathfinding.last_position);
+    float movement_distance = (movement.position - pathfinding.last_position).length();
     
     if (movement_distance < STUCK_DETECTION_THRESHOLD) {
         // Entity hasn't moved - accumulate stuck time
@@ -263,7 +263,7 @@ bool MovementSystem::has_collision(const Entity& entity, const Vec2& proposed_po
         float other_radius = other_move->collision_radius;
         float min_distance = entity_radius + other_radius;
         
-        float actual_distance = distance(proposed_position, other_move->position);
+        float actual_distance = (proposed_position - other_move->position).length();
         
         if (actual_distance < min_distance) {
             return true;  // Collision detected
@@ -271,27 +271,6 @@ bool MovementSystem::has_collision(const Entity& entity, const Vec2& proposed_po
     }
     
     return false;  // No collision
-}
-
-float MovementSystem::distance(const Vec2& a, const Vec2& b) {
-    float dx = a.x - b.x;
-    float dy = a.y - b.y;
-    return std::sqrt(dx * dx + dy * dy);
-}
-
-float MovementSystem::distance(const Vec3& a, const Vec3& b) {
-    float dx = a.x - b.x;
-    float dy = a.y - b.y;
-    float dz = a.z - b.z;
-    return std::sqrt(dx * dx + dy * dy + dz * dz);
-}
-
-Vec3 MovementSystem::normalize(const Vec3& v) {
-    float len = distance(Vec3(0, 0, 0), v);
-    if (len < 0.0001f) {
-        return v;
-    }
-    return Vec3(v.x / len, v.y / len, v.z / len);
 }
 
 void MovementSystem::request_new_path(Entity& entity, uint32_t target_spawnpoint_id, NavigationService* navigation_service, const Map* map) {

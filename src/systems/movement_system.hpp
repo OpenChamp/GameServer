@@ -78,21 +78,6 @@ private:
     // ========================================================================
     
     /**
-     * Calculate distance between two 3D points.
-     * @param a First point
-     * @param b Second point
-     * @return Euclidean distance
-     */
-    static float distance(const Vec3& a, const Vec3& b);
-    
-    /**
-     * Normalize a vector (make it unit length).
-     * @param v Vector to normalize
-     * @return Normalized vector
-     */
-    static Vec3 normalize(const Vec3& v);
-    
-    /**
      * Request a new path for an entity to a target spawnpoint.
      * @param entity The entity requesting a path
      * @param target_spawnpoint_id Target spawnpoint index
@@ -109,13 +94,5 @@ private:
      * @return true if collision detected, false if path is clear
      */
     static bool has_collision(const Entity& entity, const Vec2& proposed_position, EntityManager& entity_manager);
-    
-    /**
-     * Calculate distance between two points.
-     * @param a First point
-     * @param b Second point
-     * @return Distance
-     */
-    static float distance(const Vec2& a, const Vec2& b);
 };
 
