@@ -2,7 +2,9 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <cstring>
 #include <optional>
+#include <math.hpp>
 
 /**
  * Packet type enumeration for network communication.
@@ -125,8 +127,8 @@ public:
         }
 
         Vec2 vec{};
-        std::memcpy(&vec.x, packet_data + 1, 4); // offset 1 (after packet type)
-        std::memcpy(&vec.y, packet_data + 5, 4);
+        memcpy(&vec.x, packet_data + 1, 4); // offset 1 (after packet type)
+        memcpy(&vec.y, packet_data + 5, 4);
 
         return std::make_optional(vec);
     }
