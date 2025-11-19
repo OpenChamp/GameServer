@@ -7,14 +7,25 @@
 
 <xs:element name="entity">
     <xs:complexType>
-        <xs:sequence>
+        <xs:all>
+            <!-- Movement component for anything that can move (with or without pathfinding) -->
             <xs:element name="movement" minOccurs="0" maxOccurs="1">
                 <xs:complexType>
                     <xs:attribute name="move_speed" type="xs:float" use="optional" />
                 </xs:complexType>
             </xs:element>
+            
+            <!-- Entities with this component will use the navigation mesh to pathfind their way across the map -->
             <xs:element name="pathfinding" minOccurs="0" maxOccurs="1">
             </xs:element>
+
+            <!-- Only entities with a network component will be synchronized to clients -->
+            <xs:element name="network" minOccurs="0" maxOccurs="1" />
+
+            <!-- This is, like, a required component? For the entity state machine? TODO ploinky 17/11/2025 -->
+            <xs:element name="state" minOccurs="0" maxOccurs="1" />
+
+            <!-- All unit stats, should probably be split up (HealthComponent, MovementComponent, LevelComponent) -->
             <xs:element name="stats" minOccurs="0" maxOccurs="1">
                 <xs:complexType>
                     <!-- Core Stats -->
@@ -56,8 +67,9 @@
                     <xs:attribute name="team_id" type="xs:int" use="optional" />
                 </xs:complexType>
             </xs:element>
-        </xs:sequence>
+        </xs:all>
         
+        <!-- Uniquely identifies this entity type in the engine. Should be recognizable and probably match the file name -->
         <xs:attribute name="id" type="xs:string" use="required"/>
     </xs:complexType>
 </xs:element>

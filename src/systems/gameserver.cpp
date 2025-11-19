@@ -23,7 +23,7 @@ GameServer::GameServer(int port, int max_clients, const std::string& map_path)
     , current_state_(GAME_STATE::PREGAME)
     , network_service_(NetworkService(port, max_clients))
     , player_manager_()
-    , packet_handler_(&player_manager_, &entity_manager_, &network_service_)
+    , packet_handler_(&player_manager_, &entity_manager_, &network_service_, &gameplay_.get_input_system())
     , gameplay_() {
 
 }
@@ -87,6 +87,7 @@ void GameServer::frame_tick() {
     
     // Create system context with all services
     SystemContext ctx(entity_manager_);
+    ctx.input_system = &gameplay_.get_input_system();
     ctx.navigation_service = navigation_service_.get();
     ctx.network_service = &network_service_;
     ctx.map = map_pointer_.get();

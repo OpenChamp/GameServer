@@ -3,7 +3,39 @@
 #include "components/movement.hpp"
 #include "components/entity_state.hpp"
 #include "components/network_entity.hpp"
+#include "components/stats.hpp"
 #include <log.hpp>
+#include <sstream>
+#include <iomanip>
+
+// Helper function to create stat change packets only for changed fields
+static std::vector<std::vector<uint8_t>> create_stat_change_packets(uint32_t entity_id, const Stats& current_stats, const Stats& last_synced_stats) {
+    std::vector<std::vector<uint8_t>> packets;
+    
+    // Helper lambda to create a stat packet if value changed
+    auto add_if_changed = [&](const std::string& stat_name, float current_val, float last_val) {
+        if (current_val != last_val) {
+            std::ostringstream oss;
+            oss << std::fixed << std::setprecision(6) << current_val;
+            packets.push_back(SerializationSystem::serialize_entity_stat_change(entity_id, stat_name, oss.str()));
+        }
+    };
+    
+    auto add_if_changed_int = [&](const std::string& stat_name, int current_val, int last_val) {
+        if (current_val != last_val) {
+            packets.push_back(SerializationSystem::serialize_entity_stat_change(entity_id, stat_name, std::to_string(current_val)));
+        }
+    };
+    
+    // Check each stat and only send packets for changed values
+    add_if_changed("health", current_stats.health, last_synced_stats.health);
+    add_if_changed("max_health", current_stats.max_health, last_synced_stats.max_health);
+    add_if_changed("mana", current_stats.mana, last_synced_stats.mana);
+    add_if_changed("max_mana", current_stats.max_mana, last_synced_stats.max_mana);
+    add_if_changed_int("level", current_stats.level, last_synced_stats.level);
+    
+    return packets;
+}
 
 void NetworkSyncSystem::update(const SystemContext& ctx) {
     if(current_frame_ % 30 == 0) {
@@ -42,24 +74,48 @@ void NetworkSyncSystem::update(const SystemContext& ctx) {
             LOG_DEBUG("Skipping sync for entity %u (frame %u)", entity->get_id(), current_frame_);
             continue;  // No changes to sync
         }
+
+        if(is_first_sync) {
+            Vec2 spawn_position = Vec2(0, 0);
+            if(Movement* movement = entity->get_component<Movement>()) {
+                spawn_position = movement->position;
+            }
+            // TODO what to do with team if there is no stats component? - ploinky 17/11/2025
+            uint8_t team_id = 0;
+            if(Stats* stats = entity->get_component<Stats>()) {
+                team_id = stats->team_id;
+            }
+            std::string template_id = "";
+            if(TemplateComponent* templateComponent = entity->get_component<TemplateComponent>()) {
+                template_id = templateComponent->template_id;
+            }
+            ctx.network_service->broadcast_packet(SerializationSystem::serialize_entity_spawn(entity->get_id(), spawn_position, team_id, template_id));
+        }
         
-        // Serialize entity update
+        // Serialize entity update - returns vector of packets (one per changed component)
         bool send_full_state = force_full_sync_next_frame_ || net_comp->force_full_sync_next_frame || is_first_sync;
-        std::vector<uint8_t> packet = serialize_entity_update(entity->get_id(), *entity, send_full_state);
+        std::vector<std::vector<uint8_t>> packets = serialize_entity_update(entity->get_id(), *entity, send_full_state);
         
-        if (!packet.empty()) {
-            ctx.network_service->broadcast_packet(packet);
+        if (!packets.empty()) {
+            // Broadcast all component update packets
+            // TODO: Implement Fog of War to avoid sending packets to unseen clients
+            for (const auto& packet : packets) {
+                if (!packet.empty()) {
+                    ctx.network_service->broadcast_packet(packet);
+                }
+            }
             
             // Update last synced state
             auto* move = entity->get_component<Movement>();
             auto* state = entity->get_component<EntityStateComponent>();
+            auto* stats = entity->get_component<Stats>();
             
             Vec2 pos = move ? move->position : Vec2(0, 0);
             EntityState state_val = state ? state->current_state : EntityState::SPAWNED;
             
-            net_comp->mark_synced(pos, state_val, 0, current_frame_);
-            LOG_DEBUG("Synced entity %u (is_first_sync=%s) at position (%.1f, %.1f), state=%d", 
-                     entity->get_id(), is_first_sync ? "true" : "false", pos.x, pos.y, (int)state_val);
+            net_comp->mark_synced(pos, state_val, stats, current_frame_);
+            LOG_DEBUG("Synced entity %u (is_first_sync=%s) at position (%.1f, %.1f), state=%d, packets=%zu", 
+                     entity->get_id(), is_first_sync ? "true" : "false", pos.x, pos.y, (int)state_val, packets.size());
         } else {
             LOG_WARN("No data serialized for entity %u during sync", entity->get_id());
         }
@@ -113,13 +169,14 @@ bool NetworkSyncSystem::has_entity_changed(const Entity& entity, uint32_t curren
     return false;
 }
 
-std::vector<uint8_t> NetworkSyncSystem::serialize_entity_update(EntityID entity_id, const Entity& entity, 
-                                                                  bool send_full_state) const {
-    std::vector<uint8_t> packet;
+std::vector<std::vector<uint8_t>> NetworkSyncSystem::serialize_entity_update(EntityID entity_id, const Entity& entity, 
+                                                                               bool send_full_state) const {
+    std::vector<std::vector<uint8_t>> packets;
     
     // Get entity components
     auto* move = entity.get_component<Movement>();
     auto* state = entity.get_component<EntityStateComponent>();
+    auto* stats = entity.get_component<Stats>();
     auto* net_comp = entity.get_component<NetworkEntityComponent>();
     
     if (!move || !state) {
@@ -129,20 +186,54 @@ std::vector<uint8_t> NetworkSyncSystem::serialize_entity_update(EntityID entity_
         if (!state) {
             LOG_WARN("Entity %u missing EntityStateComponent", entity_id);
         }
-        return packet;  // Return empty packet
+        return packets;  // Return empty vector
     }
     
-    // Use existing serialization system for now
-    // TODO: Implement delta compression for bandwidth optimization
+    // ========================================================================
+    // Position Update Packet
+    // ========================================================================
     if (send_full_state || !net_comp) {
-        // Full state sync - use existing serialization
-        packet = SerializationSystem::serialize_entity_position(entity_id, move->position);
+        // Full state sync - always send position
+        packets.push_back(SerializationSystem::serialize_entity_position(entity_id, move->position));
     } else {
-        // Delta sync - only position for now
+        // Delta sync - only if position changed
         if (net_comp->has_position_changed(move->position)) {
-            packet = SerializationSystem::serialize_entity_position(entity_id, move->position);
+            packets.push_back(SerializationSystem::serialize_entity_position(entity_id, move->position));
         }
     }
     
-    return packet;
+    // ========================================================================
+    // Stats Update Packets (Each stat sent individually)
+    // ========================================================================
+    if (stats) {
+        if (send_full_state || !net_comp) {
+            // Full state sync - send each stat as individual packet
+            std::ostringstream oss;
+            oss << std::fixed << std::setprecision(6) << stats->health;
+            packets.push_back(SerializationSystem::serialize_entity_stat_change(entity_id, "health", oss.str()));
+            
+            oss.str("");
+            oss.clear();
+            oss << std::fixed << std::setprecision(6) << stats->max_health;
+            packets.push_back(SerializationSystem::serialize_entity_stat_change(entity_id, "max_health", oss.str()));
+            
+            oss.str("");
+            oss.clear();
+            oss << std::fixed << std::setprecision(6) << stats->mana;
+            packets.push_back(SerializationSystem::serialize_entity_stat_change(entity_id, "mana", oss.str()));
+            
+            oss.str("");
+            oss.clear();
+            oss << std::fixed << std::setprecision(6) << stats->max_mana;
+            packets.push_back(SerializationSystem::serialize_entity_stat_change(entity_id, "max_mana", oss.str()));
+            
+            packets.push_back(SerializationSystem::serialize_entity_stat_change(entity_id, "level", std::to_string(stats->level)));
+        } else if (net_comp->has_stats_changed(*stats)) {
+            // Delta sync - only send packets for stats that changed
+            auto stat_packets = create_stat_change_packets(entity_id, *stats, *net_comp->last_synced_stats);
+            packets.insert(packets.end(), stat_packets.begin(), stat_packets.end());
+        }
+    }
+    
+    return packets;
 }

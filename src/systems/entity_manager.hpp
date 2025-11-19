@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "components/component.hpp"
+#include "components/template.hpp"
 #include <systems/data_loader.hpp>
 
 /**
@@ -160,6 +161,9 @@ public:
             std::unique_ptr<Component> comp_copy = comp->clone();
             new_entity.add_component(std::move(comp_copy));
         }
+
+        new_entity.add_component(std::make_unique<TemplateComponent>(entity_type_id));
+
         // Register in cache
         entity_pools_[entity_type_id].push_back(new_entity.get_id());
         dirty_entities.erase(std::remove(dirty_entities.begin(), dirty_entities.end(), new_entity.get_id()), dirty_entities.end()); // remove from dirty entities -- cmkrist 15/11/2025

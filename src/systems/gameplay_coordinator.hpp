@@ -1,6 +1,8 @@
 #pragma once
 
 #include "system_context.hpp"
+#include "input_system.hpp"
+#include "collision_system.hpp"
 #include "wave_system.hpp"
 #include "movement_system.hpp"
 #include "network_sync_system.hpp"
@@ -22,8 +24,9 @@
  * SYSTEM UPDATE ORDER (important for correctness):
  *   1. WaveSystem - Spawns new entities for this frame
  *   2. MovementSystem - Updates entity positions based on paths
- *   3. CombatSystem - Resolves damage and effects
- *   4. NetworkSyncSystem - Sends state updates to clients
+ *   3. CollisionSystem - Resolves overlaps and pushes entities apart
+ *   4. CombatSystem - Resolves damage and effects
+ *   5. NetworkSyncSystem - Sends state updates to clients
  * 
  * USAGE:
  *   GameplayCoordinator gameplay;
@@ -63,16 +66,44 @@ public:
      *   2. MovementSystem::update() - Move entities
      *   3. CombatSystem::update() - Auto-attacks and damage
      *   4. NetworkSyncSystem::update() - Broadcast state
+     *   5. cleanup_dead_entities() - Remove entities marked for deletion
      * 
      * @param ctx System context containing entity manager and services
      */
     void update(const SystemContext& ctx);
     
     /**
+     * Clean up dead entities that have been synced to clients.
+     * Removes entities that have been in DEAD state for one frame,
+     * allowing clients to receive and process the death state before removal.
+     * @param entity_manager Reference to entity manager
+     */
+    void cleanup_dead_entities(EntityManager& entity_manager);
+    
+    /**
+     * Mark an entity for cleanup (removal after next network sync).
+     * Called when entity reaches DEAD state.
+     * @param entity_id ID of entity to mark for cleanup
+     */
+    void mark_for_cleanup(EntityID entity_id);
+    
+    /**
+     * Get reference to input system.
+     * @return Reference to InputSystem
+     */
+    InputSystem& get_input_system() { return input_system_; }
+    
+    /**
      * Get reference to wave system (for direct initialization if needed).
      * @return Reference to WaveSystem
      */
     WaveSystem& get_wave_system() { return *wave_system_; }
+    
+    /**
+     * Get reference to collision system.
+     * @return Reference to CollisionSystem
+     */
+    CollisionSystem& get_collision_system() { return collision_system_; }
     
     /**
      * Get reference to movement system.
@@ -93,8 +124,13 @@ public:
     CombatSystem& get_combat_system() { return combat_system_; }
 
 private:
+    InputSystem input_system_;
     std::unique_ptr<WaveSystem> wave_system_;
+    CollisionSystem collision_system_;
     MovementSystem movement_system_;
     NetworkSyncSystem network_sync_system_;
     CombatSystem combat_system_;
+    
+    // Entity cleanup tracking
+    std::vector<EntityID> entities_marked_for_cleanup_;  // Entities to remove next frame
 };

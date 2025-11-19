@@ -8,11 +8,14 @@
 >
     <movement />
     <stats
-        max_health="100"
-        health="100"
+        max_health="80"
+        health="80"
         move_speed="4.0"
+        magical_power="10"
+        armor="2"
+        magic_resist="5"
+        attack_range="5.5"
+        attack_speed="0.8"
     />
     <pathfinding />
 </entity>
-
-<!-- Add multiple minion entities -->

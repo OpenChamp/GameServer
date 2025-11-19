@@ -5,6 +5,8 @@
 #include <libs/pugixml.hpp>
 #include <component_registry.hpp>
 #include <components/stats.hpp>
+#include <components/network_entity.hpp>
+#include <components/entity_state.hpp>
 
 /**
  * Convert string to DamageType enum.
@@ -89,6 +91,19 @@ EntityTemplate DataLoader::load_entity_template(std::string file_name) {
     if(pathfindingNode != NULL) {
         std::shared_ptr<PathfindingComponent> pathfinding = std::make_shared<PathfindingComponent>();
         temp.component_templates.push_back(pathfinding);
+    }
+
+    pugi::xml_node networkNode = rootNode.child("network");
+    if(networkNode != NULL) {
+        std::shared_ptr<NetworkEntityComponent> network = std::make_shared<NetworkEntityComponent>();
+        network->force_full_sync_next_frame = true;
+        temp.component_templates.push_back(network);
+    }
+
+    pugi::xml_node stateNode = rootNode.child("state");
+    if(stateNode != NULL) {
+        std::shared_ptr<EntityStateComponent> state = std::make_shared<EntityStateComponent>();
+        temp.component_templates.push_back(state);
     }
 
     pugi::xml_node statsNode = rootNode.child("stats");

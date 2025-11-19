@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <optional>
 
 /**
  * Packet type enumeration for network communication.
@@ -24,6 +25,8 @@ enum class PACKET_TYPE : uint8_t {
     // Player related packets
     PLAYER_READY,
     PLAYER_DISCONNECT,
+    // Player actions
+    PLAYER_MOVE
 };
 
 /**
@@ -41,10 +44,14 @@ public:
         switch (type) {
             case PACKET_TYPE::PLAYER_READY:
                 return 2;  // type (1) + ready_status (1)
+            case PACKET_TYPE::PLAYER_MOVE:
+                return 5; // type (1) + position_x (4) + position_y (4)
             case PACKET_TYPE::ENTITY_POSITION:
                 return 13;  // type (1) + entity_id (4) + position_x (4) + position_y (4)
             case PACKET_TYPE::ENTITY_SPAWN:
                 return 19;  // type (1) + entity_id (4) + position_x (4) + position_y (4) + team_id (1) + type_string_length (4) + type_string_data (variable)
+            case PACKET_TYPE::ENTITY_STATS:
+                return 25;  // type (1) + entity_id (4) + health (4) + max_health (4) + mana (4) + max_mana (4) + level (4)
             case PACKET_TYPE::GAME_START:
             case PACKET_TYPE::GAME_STATE:
             case PACKET_TYPE::PLAYER_DISCONNECT:
@@ -100,5 +107,27 @@ public:
         
         out_ready = (packet_data[1] != 0);
         return true;
+    }
+
+    /**
+     * Extract and validate player move target from packet.
+     * @param packet_data Pointer to packet data
+     * @param packet_length Length of packet data
+     * @return Vec2 if the target position was extracted, nullopt otherwise
+     */
+    static std::optional<Vec2> extract_move_target_position(const uint8_t* packet_data, size_t packet_length) {
+        if(!validate_packet(packet_data, packet_length)) {
+            return std::nullopt;
+        }
+
+        if((PACKET_TYPE)(packet_data[0]) != PACKET_TYPE::PLAYER_MOVE) {
+            return std::nullopt;
+        }
+
+        Vec2 vec{};
+        std::memcpy(&vec.x, packet_data + 1, 4); // offset 1 (after packet type)
+        std::memcpy(&vec.y, packet_data + 5, 4);
+
+        return std::make_optional(vec);
     }
 };

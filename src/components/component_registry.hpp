@@ -35,4 +35,5 @@ namespace ComponentTypes {
     constexpr uint32_t NETWORK_METADATA = 3003;
     constexpr uint32_t NETWORK_ENTITY = 3004;
     constexpr uint32_t PLAYER_OWNED = 3005;
+    constexpr uint32_t TEMPLATE = 3006;
 }
