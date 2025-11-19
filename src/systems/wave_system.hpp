@@ -60,7 +60,7 @@ private:
     const Map* map_ = nullptr;
     SpawningSystem spawning_system_;
     float wave_interval_ms = 30000.0f;  // 30 seconds between waves
-    float wave_delay_ms = 10000.0f;      // 1 second delay between minions in a wave
+    float wave_delay_ms = 1000.0f;      // 1 second delay between minions in a wave
     float elapsed_time_ms;
     float last_spawn_timestamp;
     int minion_index;
