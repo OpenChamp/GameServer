@@ -33,9 +33,7 @@ NetworkService::~NetworkService() {
 ERROR_CODE NetworkService::start_server() {
     LOG_INFO("Initializing GameServer on port %d with max %d clients", port_, max_clients_);
     // Initialize ENet
-    int enet_init_result = enet_initialize();
-    LOG_INFO("enet_initialize() returned: %d", enet_init_result);
-    
+    int enet_init_result = enet_initialize();    
     if (enet_init_result != 0) {
         LOG_ERROR("Failed to initialize ENet");
         return ERROR_CODE::ERROR_ENET_INIT_FAILED;
@@ -300,7 +298,6 @@ void NetworkService::broadcast_packet(const PACKET_TYPE& packet_type) {
     // Broadcast to all connected peers
     if (backend_->enet_server_) {
         enet_host_broadcast(backend_->enet_server_, 0, packet);
-        LOG_DEBUG("Broadcasted packet type %d to all clients", (int)packet_type);
     } else {
         enet_packet_destroy(packet);
     }

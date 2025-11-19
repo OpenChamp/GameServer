@@ -60,7 +60,6 @@ void MovementSystem::process_completed_paths(const SystemContext& ctx) {
         if (result->path.empty()) {
             LOG_WARN("Entity %u received EMPTY path!", entity->get_id());
         } else {
-            LOG_INFO("Entity %u received path with %zu waypoints", entity->get_id(), result->path.size());
             if (entity_state) {
                 entity_state->current_state = EntityState::MOVING;
                 entity_state->state_duration_ms = 0.0f;

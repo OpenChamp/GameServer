@@ -116,8 +116,6 @@ void NetworkSyncSystem::update(const SystemContext& ctx) {
             net_comp->mark_synced(pos, state_val, stats, current_frame_);
             LOG_DEBUG("Synced entity %u (is_first_sync=%s) at position (%.1f, %.1f), state=%d, packets=%zu", 
                      entity->get_id(), is_first_sync ? "true" : "false", pos.x, pos.y, (int)state_val, packets.size());
-        } else {
-            LOG_WARN("No data serialized for entity %u during sync", entity->get_id());
         }
     }
     

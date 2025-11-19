@@ -54,7 +54,6 @@ void WaveSystem::update(const SystemContext& ctx) {
     // Minion Spawning
     if(minion_index > 0) {
         if (elapsed_time_ms - last_spawn_timestamp >= wave_delay_ms) {
-            LOG_INFO("Spawning new minion from wave %d, index %d", wave_index, minion_index);
             for(uint8_t team_id = 1; team_id < 3; team_id++) {
                 create_minion(
                     ctx,

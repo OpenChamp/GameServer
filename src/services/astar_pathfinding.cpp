@@ -52,7 +52,7 @@ std::vector<Vec2> AStarPathfinder::FindPath(
         }
     }
 
-    LOG_INFO("A*: start_polygon=%d, goal_polygon=%d for path (%.1f, %.1f) -> (%.1f, %.1f)", 
+    LOG_DEBUG("A*: start_polygon=%d, goal_polygon=%d for path (%.1f, %.1f) -> (%.1f, %.1f)", 
              start_polygon, goal_polygon, start_pos.x, start_pos.y, goal_pos.x, goal_pos.y);
 
     // If either position is not in a polygon, try to find the closest polygon

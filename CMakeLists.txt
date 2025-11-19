@@ -83,7 +83,6 @@ set(GAMESERVER_HEADERS
 	src/components/stats.hpp
 	src/systems/math.hpp
 	src/components/map.hpp
-	src/components/navmesh.hpp
 	src/services/navigation_service.hpp
 	src/services/astar_pathfinding.hpp
 	src/services/network_service.hpp
