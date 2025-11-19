@@ -229,3 +229,18 @@ bool GameServer::is_valid_state_transition(GAME_STATE from, GAME_STATE to) const
             return false;
     }
 }
+
+void GameServer::start_visualizer(uint16_t port) {
+    if (!map_pointer_) {
+        LOG_ERROR("Cannot start visualizer: map not initialized");
+        return;
+    }
+    
+    debug_visualizer_ = std::make_unique<VisualizerService>(port);
+    debug_visualizer_->initialize(&entity_manager_, map_pointer_.get());
+    if (debug_visualizer_->start()) {
+        LOG_INFO("Debug visualizer started on port %u", port);
+    } else {
+        LOG_ERROR("Failed to start debug visualizer");
+    }
+}

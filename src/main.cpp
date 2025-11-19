@@ -47,9 +47,28 @@ void signal_handler(int signal) {
 }
 
 // === Main Entry Point === //
-int main() {
+int main(int argc, char* argv[]) {
     LOG_INFO("OpenChamp GameServer Starting");
     LOG_INFO("==============================");
+    
+    // Parse command-line arguments
+    bool enable_visualizer = false;
+    uint16_t visualizer_port = 8080;
+    
+    for (int i = 1; i < argc; ++i) {
+        std::string arg(argv[i]);
+        if (arg == "--visualize") {
+            enable_visualizer = true;
+            LOG_INFO("Visualizer enabled (will run on port %u)", visualizer_port);
+        } else if (arg == "--visualize-port" && i + 1 < argc) {
+            try {
+                visualizer_port = std::stoi(argv[++i]);
+                LOG_INFO("Visualizer port set to %u", visualizer_port);
+            } catch (...) {
+                LOG_ERROR("Invalid visualizer port, using default %u", visualizer_port);
+            }
+        }
+    }
     
     // Parse port from environment
     int env_port = DEFAULT_PORT;
@@ -98,6 +117,11 @@ int main() {
     if (init_result != ERROR_CODE::ERROR_NONE) {
         LOG_ERROR("Failed to initialize server: %d", (int)(init_result));
         return (int)(init_result);
+    }
+    
+    // Start visualizer if requested
+    if (enable_visualizer) {
+        server.start_visualizer(visualizer_port);
     }
     
     // Register signal handler for graceful shutdown

@@ -20,6 +20,7 @@
 // Services
 #include "services/navigation_service.hpp"
 #include "services/network_service.hpp"
+#include "services/visualizer_service.hpp"
 /**
  * Central GameServer class encapsulating all server state and logic.
  * Replaces global state management with proper OOP encapsulation.
@@ -104,6 +105,12 @@ public:
      */
     bool is_lobby_full() const;
     
+    /**
+     * Start the debug visualizer web server.
+     * @param port Port to listen on (default 8080)
+     */
+    void start_visualizer(uint16_t port = 8080);
+    
 private:
     // Network configuration
     int max_clients_;
@@ -133,6 +140,7 @@ private:
     
     // Services (Separate thread)
     std::unique_ptr<NavigationService> navigation_service_;
+    std::unique_ptr<VisualizerService> debug_visualizer_;
 
     // ECS systems
     EntityManager entity_manager_;

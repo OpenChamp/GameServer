@@ -51,6 +51,7 @@ set(GAMESERVER_SOURCES
 	# Services
 	src/services/navigation_service.cpp
 	src/services/astar_pathfinding.cpp
+	src/services/visualizer_service.cpp
 	# Systems
 	src/systems/combat_system.cpp
 	src/services/network_service.cpp
@@ -109,6 +110,7 @@ set(GAMESERVER_HEADERS
 	src/components/attack.hpp
 	src/components/target.hpp
 	src/components/auto_attack.hpp
+	src/services/visualizer_service.hpp
 )
 
 set(LIBRARY_SOURCES
