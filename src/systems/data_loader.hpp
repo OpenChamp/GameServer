@@ -32,8 +32,6 @@ public:
      */
     static EntityTemplate load_entity_template(std::string file_name);
 
-    static Behavior load_behavior_template(std::string file_name);
-
     /**
      * List all files with a matching file ending in a directory.
      * @param path The directory to search
