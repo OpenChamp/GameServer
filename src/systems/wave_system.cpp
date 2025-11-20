@@ -126,9 +126,20 @@ bool WaveSystem::create_minion(const SystemContext& ctx, const std::string& mini
         minion->add_component(std::move(entity_state));
     }
     
-    // Request initial path to next spawnpoint
     uint32_t target_spawnpoint = (spawn_point_id + 1) % map_->spawnpoints.size();
-    request_minion_path(*minion, target_spawnpoint);
+    if(target_spawnpoint == 0) {
+        std::unique_ptr<BehaviorComponent> behaviorComponent = std::make_unique<BehaviorComponent>();
+        behaviorComponent->brain = entity_manager_->create_behavior_from_template("lane_minion_left");
+        minion->add_component(std::move(behaviorComponent));
+    } else if(target_spawnpoint == 1) {
+        std::unique_ptr<BehaviorComponent> behaviorComponent = std::make_unique<BehaviorComponent>();
+        behaviorComponent->brain = entity_manager_->create_behavior_from_template("lane_minion_right");
+        minion->add_component(std::move(behaviorComponent));
+    }
+    
+    // // Request initial path to next spawnpoint
+    // uint32_t target_spawnpoint = (spawn_point_id + 1) % map_->spawnpoints.size();
+    // request_minion_path(*minion, target_spawnpoint);
     
     return true;
 }

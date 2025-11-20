@@ -149,6 +149,50 @@ EntityTemplate DataLoader::load_entity_template(std::string file_name) {
     return temp;
 }
 
+Behavior DataLoader::load_behavior_template(std::string file_name) {
+    Behavior temp;
+    
+    pugi::xml_document doc;
+    pugi::xml_parse_status status = doc.load_file(file_name.c_str()).status;
+    if(status != pugi::xml_parse_status::status_ok) {
+        LOG_ERROR("Failed to load behavior from data file: %s, pugixml status is %d", file_name.c_str(), status);
+        return temp;
+    }
+
+    pugi::xml_node root_node = doc.child("behavior");
+    if(root_node == NULL) {
+        LOG_ERROR("Failed to load behavior from data file: %s, root_node 'behavior' is missing", file_name.c_str());
+        return temp;
+    }
+
+    temp.id = root_node.attribute("id").as_string();
+
+    pugi::xml_node attack_node = root_node.child("attack");
+    if(attack_node != NULL) {
+        AttackBehavior attack;
+        attack.aggro_distance = attack_node.attribute("aggro_distance").as_float();
+        temp.behaviors.push_back(attack);
+    }
+
+    pugi::xml_node waypoint_node = root_node.child("path");
+    if(waypoint_node != NULL) {
+        WaypointBehavior waypoint;
+        for(pugi::xml_node wp : waypoint_node.children()) {
+            if(strcmp(wp.name(), "vec2")) {
+                continue;
+            }
+
+            Vec2 vec;
+            vec.x = wp.attribute("x").as_float();
+            vec.y = wp.attribute("y").as_float();
+            waypoint.path.push_back(vec);
+        }
+        temp.behaviors.push_back(waypoint);
+    }
+
+    LOG_INFO("Successfully loaded template behavior \"%s\" from %s with %d behaviors", temp.id.c_str(), file_name.c_str(), temp.behaviors.size());
+    return temp;
+}
 std::vector<std::string> DataLoader::list_files_from_directory(std::string path, std::string file_ending) {
     std::vector<std::string> file_names;
     // Verify path exists

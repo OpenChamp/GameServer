@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<behavior
+    id="lane_minion_right"
+>
+    <attack
+        aggro_distance="1"
+    />
+    <!--
+    <path>
+        <vec2 x="0" y="28" />
+    </path>
+    -->
+</behavior>

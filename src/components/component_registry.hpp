@@ -22,6 +22,7 @@ namespace ComponentTypes {
     constexpr uint32_t ENTITY_STATE = 2010;
     constexpr uint32_t PATHFINDING = 2009;
     constexpr uint32_t EXPERIENCE = 2011;
+    constexpr uint32_t BEHAVIOR = 2012;
     
     // === Attack & Combat (2020-2099) ===
     constexpr uint32_t ATTACK = 2020;

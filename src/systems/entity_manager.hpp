@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "components/component.hpp"
+#include "components/behavior.hpp"
 #include "components/template.hpp"
 #include <systems/data_loader.hpp>
 
@@ -130,7 +131,19 @@ public:
             }
             entity_template_cache.emplace(entity_template.id, entity_template);
         }
+
         LOG_INFO("Loaded %zu entity templates", entity_template_cache.size());
+
+        for(std::string file_name : DataLoader::list_files_from_directory("./data/behaviors", ".xml")) {
+            Behavior behavior_template = DataLoader::load_behavior_template(file_name);
+            if(behavior_template_cache.find(behavior_template.id) != behavior_template_cache.end()) {
+                LOG_WARN("OVERWRITING EXISTING BEHAVIOR TEMPLATE: %s", behavior_template.id.c_str());
+            }
+
+            behavior_template_cache.emplace(behavior_template.id, behavior_template);
+        }
+
+        LOG_INFO("Loaded %zu behavior templates", behavior_template_cache.size());
     }
     
     /**
@@ -168,6 +181,17 @@ public:
         entity_pools_[entity_type_id].push_back(new_entity.get_id());
         dirty_entities.erase(std::remove(dirty_entities.begin(), dirty_entities.end(), new_entity.get_id()), dirty_entities.end()); // remove from dirty entities -- cmkrist 15/11/2025
         return new_entity;
+    }
+    
+    Behavior create_behavior_from_template(std::string behavior_id) {
+        // Apply Template
+        auto map_it = behavior_template_cache.find(behavior_id);
+        if(map_it == behavior_template_cache.end()) {
+            LOG_ERROR("No behavior template found for id %s", behavior_id.c_str());
+            return Behavior();
+        }
+
+        return map_it->second;
     }
     
     bool mark_entity_clean(EntityID id) {
@@ -267,4 +291,7 @@ private:
 
     // caches entity templates by their entity type (for cloning)
     std::map<std::string, EntityTemplate> entity_template_cache;
+
+    // caches behavior templates by their id (for copying)
+    std::map<std::string, Behavior> behavior_template_cache;
 };

@@ -8,6 +8,7 @@
 #include <components/movement.hpp>
 #include <components/pathfinding.hpp>
 #include <components/stats.hpp>
+#include <components/behavior.hpp>
 #include <libs/log.hpp>
 
 /**
@@ -25,11 +26,13 @@ public:
 class DataLoader {
 public:
     /**
-     * Create a new entity tempalte based on data from a file.
+     * Create a new entity template based on data from a file.
      * @param file_name The name of the file from which to load the entity template
      * @return The newly created entity template
      */
     static EntityTemplate load_entity_template(std::string file_name);
+
+    static Behavior load_behavior_template(std::string file_name);
 
     /**
      * List all files with a matching file ending in a directory.

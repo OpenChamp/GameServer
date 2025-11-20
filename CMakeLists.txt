@@ -53,6 +53,7 @@ set(GAMESERVER_SOURCES
 	src/services/astar_pathfinding.cpp
 	src/services/visualizer_service.cpp
 	# Systems
+	src/systems/behavior_system.cpp
 	src/systems/combat_system.cpp
 	src/services/network_service.cpp
 	src/systems/data_loader.cpp
@@ -89,6 +90,7 @@ set(GAMESERVER_HEADERS
 	src/services/network_service.hpp
 	src/systems/data_loader.hpp
 	src/systems/map_system.hpp
+	src/systems/behavior_system.hpp
 	src/systems/combat_system.hpp
 	src/systems/movement_system.hpp
 	src/systems/serialization_system.hpp
