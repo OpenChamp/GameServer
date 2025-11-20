@@ -11,7 +11,6 @@
 
 #include <components/movement.hpp>
 
-#include <systems/wave_system.hpp>
 #include <systems/map_system.hpp>
 
 GameServer::GameServer(int port, int max_clients, const std::string& map_path)
@@ -205,8 +204,6 @@ void GameServer::on_client_disconnect(std::string client_id) {
 }
 
 void GameServer::initialize_coordinator() {
-    // Set up WaveSystem with all required services
-    gameplay_.initialize_wave_system(&entity_manager_, &network_service_, navigation_service_.get(), map_pointer_.get());
 }
 
 bool GameServer::is_valid_state_transition(GAME_STATE from, GAME_STATE to) const {

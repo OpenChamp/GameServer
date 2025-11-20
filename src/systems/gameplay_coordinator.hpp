@@ -3,7 +3,6 @@
 #include "system_context.hpp"
 #include "input_system.hpp"
 #include "collision_system.hpp"
-#include "wave_system.hpp"
 #include "movement_system.hpp"
 #include "network_sync_system.hpp"
 #include "combat_system.hpp"
@@ -48,17 +47,6 @@ public:
     GameplayCoordinator& operator=(GameplayCoordinator&&) = default;
     
     /**
-     * Initialize the WaveSystem with required services.
-     * Must be called before update() to properly set up entity spawning.
-     * @param entity_manager Pointer to entity manager
-     * @param network_service Pointer to network service (for broadcasting)
-     * @param navigation_service Pointer to navigation service (for pathfinding)
-     * @param map Pointer to map data
-     */
-    void initialize_wave_system(EntityManager* entity_manager, NetworkService* network_service, 
-                               NavigationService* navigation_service, const Map* map);
-    
-    /**
      * Update all game systems for a single frame.
      * Systems are executed in dependency order to ensure correct behavior.
      * 
@@ -95,12 +83,6 @@ public:
     InputSystem& get_input_system() { return input_system_; }
     
     /**
-     * Get reference to wave system (for direct initialization if needed).
-     * @return Reference to WaveSystem
-     */
-    WaveSystem& get_wave_system() { return *wave_system_; }
-    
-    /**
      * Get reference to collision system.
      * @return Reference to CollisionSystem
      */
@@ -126,7 +108,6 @@ public:
 
 private:
     InputSystem input_system_;
-    std::unique_ptr<WaveSystem> wave_system_;
     CollisionSystem collision_system_;
     MovementSystem movement_system_;
     NetworkSyncSystem network_sync_system_;
