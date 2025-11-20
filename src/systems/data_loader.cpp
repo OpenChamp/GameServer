@@ -106,6 +106,87 @@ EntityTemplate DataLoader::load_entity_template(std::string file_name) {
         temp.component_templates.push_back(state);
     }
 
+    if(pugi::xml_node behavior_node = rootNode.child("behavior")) {
+        std::shared_ptr<BehaviorComponent> behavior_comp = std::make_unique<BehaviorComponent>();
+        
+        pugi::xml_node attack_node = behavior_node.child("attack");
+        if(attack_node != NULL) {
+            AttackBehavior attack;
+            attack.aggro_distance = attack_node.attribute("aggro_distance").as_float();
+            behavior_comp->brain.behaviors.push_back(attack);
+        }
+
+        pugi::xml_node waypoint_node = behavior_node.child("path");
+        if(waypoint_node != NULL) {
+            WaypointBehavior waypoint;
+            for(pugi::xml_node wp : waypoint_node.children()) {
+                if(strcmp(wp.name(), "vec2")) {
+                    continue;
+                }
+
+                Vec2 vec;
+                vec.x = wp.attribute("x").as_float();
+                vec.y = wp.attribute("y").as_float();
+                waypoint.path.push_back(vec);
+            }
+            behavior_comp->brain.behaviors.push_back(waypoint);
+        }
+
+        pugi::xml_node spawn_node = behavior_node.child("spawn");
+        if(spawn_node) {
+            SpawnBehavior spawn;
+            spawn.interval = spawn_node.attribute("interval").as_float();
+            spawn.time_since_spawn = 0;
+            for(pugi::xml_node sp : spawn_node.children()) {
+                if(strcmp(sp.name(), "spawn_entity")) {
+                    continue;
+                }
+                EntitySpawnData spawn_data;
+                spawn_data.entity_template_id = sp.attribute("entity_id").as_string();
+                spawn_data.position.x = sp.attribute("x").as_float();
+                spawn_data.position.y = sp.attribute("y").as_float();
+
+                // ============================================================================
+                // TODO THIS IS HORRIBLY DUPLICATED CODE; I NEED SOME TIME TO THINK ABOUT THIS
+                // DO NOT MERGE - ploinky 20/11/2025
+                pugi::xml_node addition_behavior = sp.child("behavior");
+                if(addition_behavior) {
+                    std::shared_ptr<BehaviorComponent> behavior_component = std::make_shared<BehaviorComponent>();
+                    pugi::xml_node attack_node = addition_behavior.child("attack");
+                    if(attack_node != NULL) {
+                        AttackBehavior attack;
+                        attack.aggro_distance = attack_node.attribute("aggro_distance").as_float();
+                        behavior_component->brain.behaviors.push_back(attack);
+                    }
+
+                    pugi::xml_node waypoint_node = addition_behavior.child("path");
+                    if(waypoint_node != NULL) {
+                        WaypointBehavior waypoint;
+                        for(pugi::xml_node wp : waypoint_node.children()) {
+                            if(strcmp(wp.name(), "vec2")) {
+                                continue;
+                            }
+
+                            Vec2 vec;
+                            vec.x = wp.attribute("x").as_float();
+                            vec.y = wp.attribute("y").as_float();
+                            waypoint.path.push_back(vec);
+                        }
+                        behavior_component->brain.behaviors.push_back(waypoint);
+                    }
+
+                    spawn_data.additional_components.push_back(behavior_component);
+                }
+                // ============================================================================
+
+                spawn.spawn_data.push_back(spawn_data);
+            }
+            behavior_comp->brain.behaviors.push_back(spawn);
+        }
+        temp.component_templates.push_back(behavior_comp);
+
+    }
+
     pugi::xml_node statsNode = rootNode.child("stats");
     if(statsNode != NULL) {
         std::shared_ptr<Stats> stats = std::make_shared<Stats>();
@@ -188,6 +269,56 @@ Behavior DataLoader::load_behavior_template(std::string file_name) {
             waypoint.path.push_back(vec);
         }
         temp.behaviors.push_back(waypoint);
+    }
+
+    pugi::xml_node spawn_node = root_node.child("spawn");
+    if(spawn_node) {
+        SpawnBehavior spawn;
+        for(pugi::xml_node sp : spawn_node.children()) {
+            if(strcmp(sp.name(), "spawn_entity")) {
+                continue;
+            }
+            EntitySpawnData spawn_data;
+            spawn_data.entity_template_id = sp.attribute("entity_id").as_string();
+
+            spawn_data.position.x = sp.attribute("x").as_float();
+            spawn_data.position.x = sp.attribute("y").as_float();
+
+            // ============================================================================
+            // TODO THIS IS HORRIBLY DUPLICATED CODE; I NEED SOME TIME TO THINK ABOUT THIS
+            // DO NOT MERGE - ploinky 20/11/2025
+            pugi::xml_node behavior_node = sp.child("behavior");
+            if(behavior_node) {
+                std::shared_ptr<BehaviorComponent> behavior_component = std::make_shared<BehaviorComponent>();
+                pugi::xml_node attack_node = root_node.child("attack");
+                if(attack_node != NULL) {
+                    AttackBehavior attack;
+                    attack.aggro_distance = attack_node.attribute("aggro_distance").as_float();
+                    behavior_component->brain.behaviors.push_back(attack);
+                }
+
+                pugi::xml_node waypoint_node = root_node.child("path");
+                if(waypoint_node != NULL) {
+                    WaypointBehavior waypoint;
+                    for(pugi::xml_node wp : waypoint_node.children()) {
+                        if(strcmp(wp.name(), "vec2")) {
+                            continue;
+                        }
+
+                        Vec2 vec;
+                        vec.x = wp.attribute("x").as_float();
+                        vec.y = wp.attribute("y").as_float();
+                        waypoint.path.push_back(vec);
+                    }
+                    behavior_component->brain.behaviors.push_back(waypoint);
+                }
+
+                spawn_data.additional_components.push_back(behavior_component);
+            }
+            // ============================================================================
+
+            spawn.spawn_data.push_back(spawn_data);
+        }
     }
 
     LOG_INFO("Successfully loaded template behavior \"%s\" from %s with %d behaviors", temp.id.c_str(), file_name.c_str(), temp.behaviors.size());

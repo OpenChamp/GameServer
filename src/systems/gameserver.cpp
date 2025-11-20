@@ -67,6 +67,8 @@ ERROR_CODE GameServer::initialize() {
 
 void GameServer::run() {
     LOG_INFO("Starting server main loop");
+
+    entity_manager_.create_entity_from_template("minion_spawner_left");
     
     while (!shutdown_requested_) {
         // Service network events

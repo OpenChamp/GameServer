@@ -28,12 +28,26 @@ public:
     float aggro_distance;
 };
 
+struct EntitySpawnData {
+    std::string entity_template_id;
+    Vec2 position;
+    std::vector<std::shared_ptr<Component>> additional_components;
+};
+
+class SpawnBehavior {
+public:
+    std::vector<EntitySpawnData> spawn_data;
+    float interval;
+    float time_since_spawn;
+};
+
 class Behavior {
 public:
     std::string id;
     std::vector<std::variant<
         WaypointBehavior,
-        AttackBehavior
+        AttackBehavior,
+        SpawnBehavior
     >> behaviors;
 };
 

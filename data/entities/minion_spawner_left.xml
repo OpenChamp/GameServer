@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<entity
+    xmlns="https://open-champ.com/mySchema"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    id="minion_spawner_left"
+>
+    <behavior>
+        <spawn
+            interval="2000"
+        >
+            <spawn_entity
+                entity_id="melee_minion"
+                x="0"
+                y="28"
+            >
+
+                <behavior>
+                    <attack
+                    aggro_distance="3"
+                    />
+                    <path>
+                        <vec2 x="0" y="-28" />
+                    </path>
+                </behavior>
+            </spawn_entity>
+        </spawn>
+    </behavior>
+</entity>
