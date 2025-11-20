@@ -13,16 +13,28 @@ void BehaviorSystem::update(const SystemContext& ctx) {
 
         for(std::variant<WaypointBehavior, AttackBehavior>& behaviorVariant : behaviors) {
             if(std::holds_alternative<AttackBehavior>(behaviorVariant)) {
+                EntityStateComponent* state_component = entity->get_component<EntityStateComponent>();
+                if(state_component->current_state == EntityState::ATTACKING) {
+                    // continue attacking, so we're done here
+                    break;
+                }
+
                 AttackBehavior& behavior = std::get<AttackBehavior>(behaviorVariant);
                 auto entities_with_stats = ctx.entity_manager.get_entities_with_component<Stats>();
 
                 for(Entity* stats_ent : entities_with_stats) {
-                    if(stats_ent->has_component<BehaviorComponent>()) {
-                        // TODO hack to not attack our teammates, since we don't know who that is yet...
+                    Stats* stats = stats_ent->get_component<Stats>();
+                    Stats* my_stats = entity->get_component<Stats>();
+                    if(stats->team_id == my_stats->team_id) {
+                        // TODO find a better way to find legal targets - ploinky 20/11/2025
                         continue;
                     }
+
                     if(std::abs((stats_ent->get_component<Movement>()->position - entity->get_component<Movement>()->position).length()) <= behavior.aggro_distance) {
                         LOG_INFO("Entity %d is aggro and wants to attack entity %d", entity->get_id(), stats_ent->get_id());
+                        state_component->current_state = EntityState::ATTACKING;
+                        state_component->target_entity_id = stats_ent->get_id();
+                        state_component->state_duration_ms = 0.0f;
                     }
                 }
                 continue;
