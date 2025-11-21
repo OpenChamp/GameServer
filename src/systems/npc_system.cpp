@@ -13,14 +13,26 @@ void NPCSystem::update_entity(const SystemContext& ctx, Entity* npc_entity) {
     Movement* npc_movement = npc_entity->get_component<Movement>();
     Stats* npc_stats = npc_entity->get_component<Stats>();
     EntityStateComponent* npc_state = npc_entity->get_component<EntityStateComponent>();
+    PathfindingComponent* npc_path = npc_entity->get_component<PathfindingComponent>();
     
-    if(!npc_movement || !npc_stats) {
-        LOG_WARN("NPCSystem attempted to update pathfinding entity %d without movement component", npc_entity->get_id());
+    if(!npc_movement || !npc_stats || !npc_state || !npc_path) {
+        LOG_WARN("NPCSystem attempted to update entity %d but it's missing (a) relevant component(s)", npc_entity->get_id());
         return;
     }
 
     if(npc_state->current_state == EntityState::ATTACKING) {
-        // TODO check if we're too far off our lane and need to return
+        // TODO if we're "flattening the navmesh" then this should really be a Vec2 - ploinky 21/11/2025
+        Vec3 current_waypoint = npc_path->waypoints[npc_path->current_waypoint_index];
+        Vec3 current_position = Vec3(npc_movement->position.x, 0, npc_movement->position.y);
+
+        // TODO Having this "stay aggrod" distance in code is a bad idea.
+        // This should be in data, because you may want different chasing distances per map. - ploinky 21/11/2025
+        if(std::abs((current_waypoint - current_position).length()) > 30.0f) {
+            npc_state->current_state = EntityState::MOVING;
+            npc_state->target_entity_id = INVALID_ENTITY_ID;
+            npc_state->state_duration_ms = 0.0f;
+            return; // done updating this entity
+        }
     }
 
     if(npc_state->current_state == EntityState::MOVING || npc_state->current_state == EntityState::PATHFINDING_WAITING) {
@@ -35,8 +47,8 @@ void NPCSystem::update_entity(const SystemContext& ctx, Entity* npc_entity) {
                 continue; // continue checking other entities in range
             }
 
-            // TODO this check needs to be in an attack component,
-            // and it needs a second fields "acquisition_range" or something similar - ploinky 20/11/2025
+            // TODO This check needs to be against a different field in an attack component,
+            // "acquisition_range" or something similar - ploinky 20/11/2025
             if(std::abs((npc_movement->position - other_movement->position).length()) <= npc_stats->attack_range) {
                 npc_state->current_state = EntityState::ATTACKING;
                 npc_state->target_entity_id = other_entity->get_id();
