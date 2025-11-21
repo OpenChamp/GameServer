@@ -7,6 +7,7 @@
 #include "movement_system.hpp"
 #include "network_sync_system.hpp"
 #include "combat_system.hpp"
+#include "npc_system.hpp"
 
 /**
  * GameplayCoordinator - Orchestrates all game systems
@@ -130,6 +131,7 @@ private:
     MovementSystem movement_system_;
     NetworkSyncSystem network_sync_system_;
     CombatSystem combat_system_;
+    NPCSystem npc_system_;
     
     // Entity cleanup tracking
     std::vector<EntityID> entities_marked_for_cleanup_;  // Entities to remove next frame

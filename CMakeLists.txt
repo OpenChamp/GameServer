@@ -63,6 +63,7 @@ set(GAMESERVER_SOURCES
 	src/systems/combat_system.cpp
 	src/systems/movement_system.cpp
 	src/systems/network_sync_system.cpp
+	src/systems/npc_system.cpp
 	src/systems/serialization_system.cpp
 	src/systems/spawning_system.cpp
 	src/systems/wave_system.cpp
@@ -95,6 +96,7 @@ set(GAMESERVER_HEADERS
 	src/systems/spawning_system.hpp
 	src/systems/wave_system.hpp
 	src/systems/network_sync_system.hpp
+	src/systems/npc_system.hpp
 	src/systems/player_manager.hpp
 	src/systems/input_system.hpp
 	src/systems/collision_system.hpp

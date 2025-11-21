@@ -19,6 +19,7 @@ void GameplayCoordinator::update(const SystemContext& ctx) {
     
     // INPUT SYSTEMS
     input_system_.update(ctx);
+    npc_system_.update(ctx);
     
     // ENGINE SYSTEMS
     wave_system_->update(ctx);
