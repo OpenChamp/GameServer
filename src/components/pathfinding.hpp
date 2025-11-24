@@ -11,8 +11,8 @@
  * Entity state is tracked in EntityStateComponent (PATHFINDING_WAITING, MOVING, STUCK).
  */
 struct PathfindingComponent : public Component {
-    // Current path waypoints (3D positions)
-    std::vector<Vec3> waypoints;
+    // Current path waypoints (2D positions)
+    std::vector<Vec2> waypoints;
     
     // Index of the next waypoint to move toward
     int current_waypoint_index = 0;

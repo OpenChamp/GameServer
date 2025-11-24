@@ -24,10 +24,9 @@ void NPCSystem::update_entity(const SystemContext& ctx, Entity* npc_entity) {
 
     if(npc_comp->npc_type == NPCType::MINION) {
         if(npc_state->current_state == EntityState::ATTACKING) {
-            Vec3 current_waypoint = npc_path->waypoints[npc_path->current_waypoint_index];
-            Vec2 waypoint_2d = Vec2(current_waypoint.x, current_waypoint.z);
+            Vec2 current_waypoint = npc_path->waypoints[npc_path->current_waypoint_index];
 
-            if((waypoint_2d - npc_movement->position).length() > npc_comp->chase_distance) {
+            if((current_waypoint - npc_movement->position).length() > npc_comp->chase_distance) {
                 npc_state->current_state = EntityState::MOVING;
                 npc_state->target_entity_id = INVALID_ENTITY_ID;
                 npc_state->state_duration_ms = 0.0f;

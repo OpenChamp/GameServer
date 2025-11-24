@@ -190,10 +190,9 @@ void MovementSystem::update_waypoint_movement(const SystemContext& ctx, Entity& 
     }
     
     // Move toward current waypoint
-    Vec3 current_waypoint = pathfinding.waypoints[pathfinding.current_waypoint_index];
-    Vec2 waypoint_2d = Vec2(current_waypoint.x, current_waypoint.z);
+    Vec2 current_waypoint = pathfinding.waypoints[pathfinding.current_waypoint_index];
     Vec2 current_pos = movement.position;
-    Vec2 direction = waypoint_2d - current_pos;
+    Vec2 direction = current_waypoint - current_pos;
     float distance = direction.length();
     
     // Check if reached waypoint
@@ -207,7 +206,7 @@ void MovementSystem::update_waypoint_movement(const SystemContext& ctx, Entity& 
     float distance_to_move = move_speed * (ctx.delta_time_ms / 1000.0f);
     
     Vec2 new_position = (distance_to_move >= distance) 
-        ? waypoint_2d 
+        ? current_waypoint 
         : current_pos + (direction.normalized() * distance_to_move);
     
     movement.position = new_position;

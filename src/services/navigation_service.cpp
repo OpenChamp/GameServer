@@ -80,13 +80,10 @@ struct NavigationService::NavServiceBackend {
                 req.entity_pathing_radius
             );
 
-            // Convert the 2D path back to 3D (keeping Y from destination for now)
+            // Store the 2D path directly
             PathResult res = PathResult();
             res.entity_id = req.entity_id;
-            res.path.reserve(path_2d.size());
-            for (const auto& waypoint_2d : path_2d) {
-                res.path.push_back(Vec3(waypoint_2d.x, req.destination.y, waypoint_2d.y));
-            }
+            res.path = path_2d;
             
             if (res.path.empty()) {
                 LOG_WARN("Navigation: Entity %u path from (%.1f, %.1f) to (%.1f, %.1f) returned EMPTY PATH", 

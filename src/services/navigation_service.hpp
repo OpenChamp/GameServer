@@ -18,7 +18,7 @@ public:
 class PathResult {
 public:
     uint32_t entity_id;
-    std::vector<Vec3> path;
+    std::vector<Vec2> path;
 };
 
 class NavigationService {
