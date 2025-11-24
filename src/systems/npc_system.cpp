@@ -4,8 +4,7 @@
 #include "components/npc_component.hpp"
 
 void NPCSystem::update(const SystemContext& ctx) {
-    // TODO properly pick npc entities only - ploinky 20/11/2025
-    for(auto npc_entity : ctx.entity_manager.get_entities_with_component<PathfindingComponent>()) {
+    for(auto npc_entity : ctx.entity_manager.get_entities_with_component<NPCComponent>()) {
         update_entity(ctx, npc_entity);
     }
 }
