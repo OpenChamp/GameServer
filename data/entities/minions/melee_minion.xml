@@ -17,5 +17,8 @@
         attack_speed="1.0"
     />
     <pathfinding />
-    <npc type="minion" />
+    <npc
+        type="minion" 
+        chase_distance="10.0"
+    />
 </entity>

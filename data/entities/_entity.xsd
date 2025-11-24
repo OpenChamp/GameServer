@@ -29,6 +29,8 @@
             <xs:element name="npc" minOccurs="0" maxOccurs="1">
                 <xs:complexType>
                     <xs:attribute name="type" type="xs:string" use="required" />
+                    <xs:attribute name="chase_distance" type="xs:float" use="optional" />
+                    <xs:attribute name="chase_timeout_ms" type="xs:float" use="optional" />
                 </xs:complexType>
             </xs:element>
 

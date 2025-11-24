@@ -28,9 +28,7 @@ void NPCSystem::update_entity(const SystemContext& ctx, Entity* npc_entity) {
             Vec3 current_waypoint = npc_path->waypoints[npc_path->current_waypoint_index];
             Vec3 current_position = Vec3(npc_movement->position.x, 0, npc_movement->position.y);
 
-            // TODO Having this "stay aggrod" distance in code is a bad idea.
-            // This should be in data, because you may want different chasing distances per map. - ploinky 21/11/2025
-            if(std::abs((current_waypoint - current_position).length()) > 30.0f) {
+            if(std::abs((current_waypoint - current_position).length()) > npc_comp->chase_distance) {
                 npc_state->current_state = EntityState::MOVING;
                 npc_state->target_entity_id = INVALID_ENTITY_ID;
                 npc_state->state_duration_ms = 0.0f;

@@ -124,6 +124,7 @@ EntityTemplate DataLoader::load_entity_template(std::string file_name) {
     if(npc_node != NULL) {
         std::shared_ptr<NPCComponent> npc = std::make_shared<NPCComponent>();
         LOAD_ENUM_ATTRIBUTE(npc_node, npc, npc_type, string_to_npc_type)
+        LOAD_ATTRIBUTE(npc_node, npc, chase_distance, float)
         temp.component_templates.push_back(npc);
     }
 
