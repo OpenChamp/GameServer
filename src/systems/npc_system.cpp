@@ -24,11 +24,10 @@ void NPCSystem::update_entity(const SystemContext& ctx, Entity* npc_entity) {
 
     if(npc_comp->npc_type == NPCType::MINION) {
         if(npc_state->current_state == EntityState::ATTACKING) {
-            // TODO if we're "flattening the navmesh" then this should really be a Vec2 - ploinky 21/11/2025
             Vec3 current_waypoint = npc_path->waypoints[npc_path->current_waypoint_index];
-            Vec3 current_position = Vec3(npc_movement->position.x, 0, npc_movement->position.y);
+            Vec2 waypoint_2d = Vec2(current_waypoint.x, current_waypoint.z);
 
-            if(std::abs((current_waypoint - current_position).length()) > npc_comp->chase_distance) {
+            if((waypoint_2d - npc_movement->position).length() > npc_comp->chase_distance) {
                 npc_state->current_state = EntityState::MOVING;
                 npc_state->target_entity_id = INVALID_ENTITY_ID;
                 npc_state->state_duration_ms = 0.0f;
@@ -50,7 +49,7 @@ void NPCSystem::update_entity(const SystemContext& ctx, Entity* npc_entity) {
 
                 // TODO This check needs to be against a different field in an attack component,
                 // "acquisition_range" or something similar - ploinky 20/11/2025
-                if(std::abs((npc_movement->position - other_movement->position).length()) <= npc_stats->attack_range) {
+                if((npc_movement->position - other_movement->position).length() <= npc_stats->attack_range) {
                     npc_state->current_state = EntityState::ATTACKING;
                     npc_state->target_entity_id = other_entity->get_id();
                     npc_state->state_duration_ms = 0.0f;
