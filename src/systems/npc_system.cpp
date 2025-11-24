@@ -22,7 +22,9 @@ void NPCSystem::update_entity(const SystemContext& ctx, Entity* npc_entity) {
     }
 
     if(npc_comp->npc_type == NPCType::MINION) {
-        if(npc_state->current_state == EntityState::ATTACKING) {
+
+        // Stop attacking if the minion is too far away from its path
+        if(npc_state->current_state == EntityState::ATTACKING && npc_path->waypoints.size() > 0) {
             Vec2 current_waypoint = npc_path->waypoints[npc_path->current_waypoint_index];
 
             if((current_waypoint - npc_movement->position).length() > npc_comp->chase_distance) {
@@ -33,6 +35,7 @@ void NPCSystem::update_entity(const SystemContext& ctx, Entity* npc_entity) {
             }
         }
 
+        // If the minion is running down its path, stop pathing and attack any enemy entities within aggro range
         if(npc_state->current_state == EntityState::MOVING || npc_state->current_state == EntityState::PATHFINDING_WAITING) {
             // TODO how do I find all entities in my general area that are attackable? - ploinky 20/11/2025
             for(auto other_entity : ctx.entity_manager.get_entities_with_component<Stats>()) {
