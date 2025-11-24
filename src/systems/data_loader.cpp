@@ -7,6 +7,7 @@
 #include <components/stats.hpp>
 #include <components/network_entity.hpp>
 #include <components/entity_state.hpp>
+#include <components/npc_component.hpp>
 
 /**
  * Convert string to DamageType enum.
@@ -21,6 +22,19 @@ static DamageType string_to_damage_type(const std::string& str) {
     }
     // Default to PHYSICAL for unrecognized or empty strings
     return DamageType::PHYSICAL;
+}
+
+/**
+ * Convert string to NPCType enum.
+ * @param str The string to convert (case-insensitive)
+ * @return NPCType enum value, defaults to MINION if unrecognized
+ */
+static NPCType string_to_npc_type(const std::string& str) {
+    if (str == "minion") {
+        return NPCType::MINION;
+    }
+    // Default to MINION for unrecognized or empty strings
+    return NPCType::MINION;
 }
 
 /**
@@ -104,6 +118,13 @@ EntityTemplate DataLoader::load_entity_template(std::string file_name) {
     if(stateNode != NULL) {
         std::shared_ptr<EntityStateComponent> state = std::make_shared<EntityStateComponent>();
         temp.component_templates.push_back(state);
+    }
+
+    pugi::xml_node npc_node = rootNode.child("npc");
+    if(npc_node != NULL) {
+        std::shared_ptr<NPCComponent> npc = std::make_shared<NPCComponent>();
+        LOAD_ENUM_ATTRIBUTE(npc_node, npc, npc_type, string_to_npc_type)
+        temp.component_templates.push_back(npc);
     }
 
     pugi::xml_node statsNode = rootNode.child("stats");

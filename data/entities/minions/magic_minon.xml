@@ -18,4 +18,5 @@
         attack_speed="0.8"
     />
     <pathfinding />
+    <npc type="minion" />
 </entity>

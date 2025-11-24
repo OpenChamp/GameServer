@@ -25,6 +25,13 @@
             <!-- This is, like, a required component? For the entity state machine? TODO ploinky 17/11/2025 -->
             <xs:element name="state" minOccurs="0" maxOccurs="1" />
 
+            <!-- Entities with this component will have NPC behavior according to the type -->
+            <xs:element name="npc" minOccurs="0" maxOccurs="1">
+                <xs:complexType>
+                    <xs:attribute name="type" type="xs:string" use="required" />
+                </xs:complexType>
+            </xs:element>
+
             <!-- All unit stats, should probably be split up (HealthComponent, MovementComponent, LevelComponent) -->
             <xs:element name="stats" minOccurs="0" maxOccurs="1">
                 <xs:complexType>
