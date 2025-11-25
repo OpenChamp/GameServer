@@ -54,13 +54,14 @@ set(GAMESERVER_SOURCES
 	src/services/visualizer_service.cpp
 	# Systems
 	src/systems/combat_system.cpp
+	src/systems/auto_attack_system.cpp
+	src/systems/attack_execution_system.cpp
 	src/services/network_service.cpp
 	src/systems/data_loader.cpp
 	src/systems/gameserver.cpp
 	src/systems/input_system.cpp
 	src/systems/collision_system.cpp
 	src/systems/map_system.cpp
-	src/systems/combat_system.cpp
 	src/systems/movement_system.cpp
 	src/systems/network_sync_system.cpp
 	src/systems/npc_system.cpp
@@ -91,6 +92,8 @@ set(GAMESERVER_HEADERS
 	src/systems/data_loader.hpp
 	src/systems/map_system.hpp
 	src/systems/combat_system.hpp
+	src/systems/auto_attack_system.hpp
+	src/systems/attack_execution_system.hpp
 	src/systems/movement_system.hpp
 	src/systems/serialization_system.hpp
 	src/systems/spawning_system.hpp
