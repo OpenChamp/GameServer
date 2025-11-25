@@ -8,6 +8,9 @@
 #include <components/network_entity.hpp>
 #include <components/entity_state.hpp>
 #include <components/npc_component.hpp>
+#include <components/auto_attack.hpp>
+#include <components/target.hpp>
+#include <components/attack.hpp>
 
 /**
  * Convert string to DamageType enum.
@@ -35,6 +38,42 @@ static NPCType string_to_npc_type(const std::string& str) {
     }
     // Default to MINION for unrecognized or empty strings
     return NPCType::MINION;
+}
+
+/**
+ * Convert string to AIPersonality enum.
+ * @param str The string to convert (case-insensitive)
+ * @return AIPersonality enum value, defaults to BALANCED if unrecognized
+ */
+static AutoAttackComponent::AIPersonality string_to_ai_personality(const std::string& str) {
+    if (str == "passive") {
+        return AutoAttackComponent::AIPersonality::PASSIVE;
+    } else if (str == "defensive") {
+        return AutoAttackComponent::AIPersonality::DEFENSIVE;
+    } else if (str == "aggressive") {
+        return AutoAttackComponent::AIPersonality::AGGRESSIVE;
+    } else if (str == "zealous") {
+        return AutoAttackComponent::AIPersonality::ZEALOUS;
+    }
+    // Default to BALANCED for unrecognized or empty strings
+    return AutoAttackComponent::AIPersonality::BALANCED;
+}
+
+/**
+ * Convert string to TargetPriority enum.
+ * @param str The string to convert (case-insensitive)
+ * @return TargetPriority enum value, defaults to NEAREST if unrecognized
+ */
+static TargetComponent::TargetPriority string_to_target_priority(const std::string& str) {
+    if (str == "lowest_health") {
+        return TargetComponent::TargetPriority::LOWEST_HEALTH;
+    } else if (str == "highest_threat") {
+        return TargetComponent::TargetPriority::HIGHEST_THREAT;
+    } else if (str == "highest_damage") {
+        return TargetComponent::TargetPriority::HIGHEST_DAMAGE;
+    }
+    // Default to NEAREST for unrecognized or empty strings
+    return TargetComponent::TargetPriority::NEAREST;
 }
 
 /**
@@ -96,40 +135,72 @@ EntityTemplate DataLoader::load_entity_template(std::string file_name) {
     temp.id = id;
 
     pugi::xml_node movementNode = rootNode.child("movement");
-    if(movementNode != NULL) {
+    if(!movementNode.empty()) {
         std::shared_ptr<Movement> movement = std::make_shared<Movement>();
         temp.component_templates.push_back(movement);
     }
     
     pugi::xml_node pathfindingNode = rootNode.child("pathfinding");
-    if(pathfindingNode != NULL) {
+    if(!pathfindingNode.empty()) {
         std::shared_ptr<PathfindingComponent> pathfinding = std::make_shared<PathfindingComponent>();
         temp.component_templates.push_back(pathfinding);
     }
 
     pugi::xml_node networkNode = rootNode.child("network");
-    if(networkNode != NULL) {
+    if(!networkNode.empty()) {
         std::shared_ptr<NetworkEntityComponent> network = std::make_shared<NetworkEntityComponent>();
         network->force_full_sync_next_frame = true;
         temp.component_templates.push_back(network);
     }
 
     pugi::xml_node stateNode = rootNode.child("state");
-    if(stateNode != NULL) {
+    if(!stateNode.empty()) {
         std::shared_ptr<EntityStateComponent> state = std::make_shared<EntityStateComponent>();
         temp.component_templates.push_back(state);
     }
 
     pugi::xml_node npc_node = rootNode.child("npc");
-    if(npc_node != NULL) {
+    if(!npc_node.empty()) {
         std::shared_ptr<NPCComponent> npc = std::make_shared<NPCComponent>();
         LOAD_ENUM_ATTRIBUTE(npc_node, npc, npc_type, string_to_npc_type)
         LOAD_ATTRIBUTE(npc_node, npc, chase_distance, float)
         temp.component_templates.push_back(npc);
     }
 
+    pugi::xml_node auto_attack_node = rootNode.child("auto_attack");
+    if(!auto_attack_node.empty()) {
+        std::shared_ptr<AutoAttackComponent> auto_attack = std::make_shared<AutoAttackComponent>();
+        LOAD_ATTRIBUTE(auto_attack_node, auto_attack, enabled, bool)
+        LOAD_ATTRIBUTE(auto_attack_node, auto_attack, aggressive, bool)
+        LOAD_ATTRIBUTE(auto_attack_node, auto_attack, retaliate_only, bool)
+        LOAD_ATTRIBUTE(auto_attack_node, auto_attack, aggression_range, float)
+        LOAD_ATTRIBUTE(auto_attack_node, auto_attack, retreat_range, float)
+        LOAD_ENUM_ATTRIBUTE(auto_attack_node, auto_attack, personality, string_to_ai_personality)
+        LOAD_ATTRIBUTE(auto_attack_node, auto_attack, combat_timeout_ms, float)
+        LOAD_ATTRIBUTE(auto_attack_node, auto_attack, base_damage_multiplier, float)
+        LOAD_ATTRIBUTE(auto_attack_node, auto_attack, bonus_damage, float)
+        LOAD_ENUM_ATTRIBUTE(auto_attack_node, auto_attack, damage_type, string_to_damage_type)
+        LOAD_ATTRIBUTE(auto_attack_node, auto_attack, attack_animation_duration_ms, float)
+        LOAD_ATTRIBUTE(auto_attack_node, auto_attack, hit_timing_percent, float)
+        temp.component_templates.push_back(auto_attack);
+    }
+
+    pugi::xml_node target_node = rootNode.child("target");
+    if(!target_node.empty()) {
+        std::shared_ptr<TargetComponent> target = std::make_shared<TargetComponent>();
+        LOAD_ENUM_ATTRIBUTE(target_node, target, targeting_mode, string_to_target_priority)
+        LOAD_ATTRIBUTE(target_node, target, target_search_interval_ms, float)
+        temp.component_templates.push_back(target);
+    }
+
+    pugi::xml_node attack_node = rootNode.child("attack");
+    if(!attack_node.empty()) {
+        std::shared_ptr<AttackComponent> attack = std::make_shared<AttackComponent>();
+        temp.component_templates.push_back(attack);
+    }
+
     pugi::xml_node statsNode = rootNode.child("stats");
-    if(statsNode != NULL) {
+    if(!statsNode.empty()) {
         std::shared_ptr<Stats> stats = std::make_shared<Stats>();
 
         LOAD_ATTRIBUTE(statsNode, stats, max_health, float)
@@ -164,6 +235,8 @@ EntityTemplate DataLoader::load_entity_template(std::string file_name) {
         LOAD_ATTRIBUTE(statsNode, stats, leech, float)
         LOAD_ATTRIBUTE(statsNode, stats, vision_range, float)
 
+        LOG_DEBUG("Loaded Stats component: health=%f, max_health=%f, move_speed=%f", 
+                  stats->health, stats->max_health, stats->move_speed);
         temp.component_templates.push_back(stats);
     }
 

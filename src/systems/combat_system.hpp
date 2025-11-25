@@ -3,42 +3,42 @@
 #include "entity_manager.hpp"
 #include "system_context.hpp"
 #include "components/stats.hpp"
-#include "components/attack.hpp"
-#include "components/auto_attack.hpp"
-#include "components/target.hpp"
 #include <vector>
 
 /**
- * CombatSystem - Handles all combat mechanics
+ * CombatSystem - Handles damage calculation and application
  * 
  * RESPONSIBILITIES:
  *   - Damage calculation and application
- *   - Auto-attack execution and cooldown management
- *   - Target selection and validation
- *   - Combat state management (in-combat, cooldowns, etc.)
  *   - Critical hit calculation
  *   - Armor/resist/mitigation calculations
+ *   - Lifesteal and spell vamp application
+ *   - Entity death state management
+ * 
+ * DATA-DRIVEN DESIGN:
+ *   This system is purely data-driven. It only applies damage, healing, and
+ *   mana restoration based on external input (from skills, auto-attacks, etc).
+ *   Auto-attack behavior, cooldown management, and target selection are handled
+ *   by the AutoAttackSystem.
  * 
  * COMPONENTS USED:
  *   - Stats (base damage, armor, resist, health)
- *   - AttackComponent (attack cooldown, state)
- *   - AutoAttackComponent (AI behavior)
- *   - TargetComponent (target tracking)
- *   - Movement (for distance calculations)
+ *   - EntityStateComponent (entity state tracking)
+ *   - NetworkEntityComponent (for syncing death state)
  * 
  * SYSTEM INTERACTION:
  *   - Works with NetworkSyncSystem to broadcast combat effects
- *   - Integrates with MovementSystem for approach distance
+ *   - AutoAttackSystem calls apply_damage to execute attacks
+ *   - Triggered by other systems for damage/healing events
  *   - Coordinates with GameplayCoordinator for execution order
  */
 class CombatSystem {
 public:
     /**
      * Update all combat for this frame.
-     * Processes auto-attacks, cooldowns, and combat state for all entities.
+     * The combat system is data-driven - actual combat is triggered externally.
      * @param ctx System context with entity manager, services, and delta time
      */
-    void update(const SystemContext& ctx);
     
     /**
      * Structure representing damage information for combat events.
@@ -96,85 +96,6 @@ public:
         EntityID target_id,
         float mana_amount
     );
-
-    /**
-     * Check if an entity is dead (health <= 0).
-     * @param entity_manager Reference to entity manager
-     * @param entity_id Entity ID to check
-     * @return true if entity is dead or doesn't exist, false otherwise
-     */
-    bool is_dead(
-        EntityManager& entity_manager,
-        EntityID entity_id
-    ) const;
-    
-    /**
-     * Update and process auto-attacks for an entity.
-     * Handles cooldowns, target selection, and attack execution for entities with AutoAttackComponent.
-     * @param ctx System context
-     * @param entity Entity to update
-     * @param delta_time_ms Time since last frame in milliseconds
-     */
-    void update_auto_attack(const SystemContext& ctx, Entity& entity, float delta_time_ms);
-    
-    /**
-     * Find best target for an entity based on targeting mode.
-     * @param ctx System context
-     * @param attacker Entity looking for target
-     * @param auto_attack_comp AutoAttackComponent for settings
-     * @param target_comp TargetComponent to update
-     * @return EntityID of best target, or INVALID_ENTITY_ID if none found
-     */
-    EntityID find_best_target(const SystemContext& ctx, const Entity& attacker,
-                             const AutoAttackComponent& auto_attack_comp,
-                             TargetComponent& target_comp) const;
-    
-    /**
-     * Check if a potential target is valid (not dead, correct team, etc).
-     * @param ctx System context
-     * @param attacker Entity doing attacking
-     * @param potential_target Entity to validate
-     * @return true if valid target
-     */
-    bool is_valid_target(const SystemContext& ctx, const Entity& attacker,
-                        const Entity& potential_target) const;
-    
-    /**
-     * Update attack cooldown for an entity.
-     * Called each frame to reduce the cooldown timer.
-     * @param attack Attack component to update
-     * @param delta_time_ms Time elapsed since last frame
-     */
-    void update_attack_cooldown(AttackComponent& attack, float delta_time_ms) const;
-    
-    /**
-     * Start attack cooldown based on attack speed stat.
-     * @param attack Attack component to update
-     * @param attack_speed_stat Attack speed from Stats component (attacks per second)
-     */
-    void start_attack_cooldown(AttackComponent& attack, float attack_speed_stat) const;
-    
-    /**
-     * Check if an entity is ready to attack.
-     * @param attack Attack component to check
-     * @return true if cooldown is finished and entity can attack
-     */
-    bool is_attack_ready(const AttackComponent& attack) const;
-    
-    /**
-     * Begin attack animation.
-     * @param attack Attack component to update
-     */
-    void begin_attack_animation(AttackComponent& attack) const;
-    
-    /**
-     * Update attack animation progress.
-     * @param attack Attack component to update
-     * @param delta_time_ms Time elapsed
-     * @param animation_duration_ms Total animation duration
-     * @return true if animation is complete
-     */
-    bool update_attack_animation(AttackComponent& attack, float delta_time_ms, float animation_duration_ms) const;
 
 private:
     /**
