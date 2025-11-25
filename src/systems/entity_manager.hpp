@@ -8,7 +8,7 @@
 #include "components/component.hpp"
 #include "components/template.hpp"
 #include "components/movement.hpp"
-#include <systems/data_loader.hpp>
+#include <systems/util/data_loader.hpp>
 
 /**
  * Represents a unique entity ID in the ECS system.

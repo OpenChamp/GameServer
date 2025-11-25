@@ -1,4 +1,4 @@
-#include "combat_system.hpp"
+#include <systems/util/combat_system.hpp>
 #include "components/entity_state.hpp"
 #include "components/network_entity.hpp"
 #include <log.hpp>
