@@ -5,6 +5,7 @@
 #include <components/pathfinding.hpp>
 #include <components/stats.hpp>
 #include <components/entity_state.hpp>
+#include <components/auto_attack.hpp>
 #include <log.hpp>
 #include <cmath>
 
@@ -91,6 +92,56 @@ void MovementSystem::update_entity_movement(const SystemContext& ctx, Entity& en
     EntityStateComponent* state_comp = entity.get_component<EntityStateComponent>();
     
     if (!movement || !stats) return;
+    
+    // If holding for target, move toward the target entity
+    if (state_comp && state_comp->current_state == EntityState::HOLDING_FOR_TARGET &&
+        state_comp->target_entity_id != INVALID_ENTITY_ID) {
+        Entity* target = ctx.entity_manager.get_entity(state_comp->target_entity_id);
+        if (target) {
+            Movement* target_movement = target->get_component<Movement>();
+            if (target_movement) {
+                // Move toward target
+                Vec2 direction = target_movement->position - movement->position;
+                float distance = direction.length();
+                
+                if (distance > 0.1f) {
+                    Vec2 normalized_dir = direction.normalized();
+                    float move_speed = stats->move_speed;
+                    float distance_to_move = move_speed * (ctx.delta_time_ms / 1000.0f);
+                    movement->position = movement->position + (normalized_dir * distance_to_move);
+                }
+            }
+        }
+        return;  // Don't process other movement
+    }
+    
+    // Handle movement during ATTACKING state (kiting)
+    if (state_comp && state_comp->current_state == EntityState::ATTACKING) {
+        // Check if entity has AutoAttackComponent and kiting is enabled
+        auto* auto_attack = entity.get_component<AutoAttackComponent>();
+        if (auto_attack && auto_attack->allow_kiting && auto_attack->kite_while_attacking) {
+            // Move toward target with reduced speed
+            if (state_comp->target_entity_id != INVALID_ENTITY_ID) {
+                Entity* target = ctx.entity_manager.get_entity(state_comp->target_entity_id);
+                if (target) {
+                    Movement* target_movement = target->get_component<Movement>();
+                    if (target_movement) {
+                        // Move toward target at reduced speed
+                        Vec2 direction = target_movement->position - movement->position;
+                        float distance = direction.length();
+                        
+                        if (distance > 0.1f) {
+                            Vec2 normalized_dir = direction.normalized();
+                            float base_move_speed = stats->move_speed * auto_attack->movement_during_attack;
+                            float distance_to_move = base_move_speed * (ctx.delta_time_ms / 1000.0f);
+                            movement->position = movement->position + (normalized_dir * distance_to_move);
+                        }
+                    }
+                }
+            }
+        }
+        return;  // Stop other movement processing during attack
+    }
     
     // Update direct movement targets (players, point-based movement)
     if (state_comp && state_comp->current_state == EntityState::MOVING && 
