@@ -7,6 +7,7 @@
 
 #include "components/component.hpp"
 #include "components/template.hpp"
+#include "components/movement.hpp"
 #include <systems/data_loader.hpp>
 
 /**
@@ -257,6 +258,44 @@ public:
      */
     std::unordered_map<EntityID, Entity>& get_all_entities() {
         return entities_;
+    }
+    
+    /**
+     * Get entity template by ID without creating an entity.
+     * Useful for querying template data (e.g., collision radius) without consuming an entity ID.
+     * @param template_id The ID of the template to retrieve
+     * @return Const pointer to the template, or nullptr if not found
+     */
+    const EntityTemplate* get_template(const std::string& template_id) const {
+        auto it = entity_template_cache.find(template_id);
+        if (it == entity_template_cache.end()) {
+            return nullptr;
+        }
+        return &it->second;
+    }
+    
+    /**
+     * Get collision radius for a template without creating an entity.
+     * Used for pathfinding and collision queries during spawn phase.
+     * @param template_id The ID of the template
+     * @return Collision radius (default 0.5f if not found)
+     */
+    float get_template_collision_radius(const std::string& template_id) const {
+        const EntityTemplate* template_data = get_template(template_id);
+        if (!template_data) {
+            return 0.5f;  // Default
+        }
+        
+        // Search for Movement component in template (TYPE_ID = 2001)
+        for (const auto& comp : template_data->component_templates) {
+            if (comp->get_type_id() == 2001) {  // Movement component type ID
+                const Movement* move_template = static_cast<const Movement*>(comp.get());
+                if (move_template) {
+                    return move_template->collision_radius;
+                }
+            }
+        }
+        return 0.5f;  // Default
     }
 
 private:
