@@ -139,3 +139,40 @@ std::vector<uint8_t> SerializationSystem::serialize_entity_stat_change(uint32_t 
     
     return packet_data;
 }
+
+std::vector<uint8_t> SerializationSystem::serialize_entity_state(uint32_t entity_id, uint8_t state_value) {
+    std::vector<uint8_t> packet_data;
+    packet_data.push_back(static_cast<uint8_t>(PACKET_TYPE::ENTITY_STATE));
+    
+    // Entity ID (4 bytes, little-endian)
+    serialize_uint32(entity_id, packet_data);
+    
+    // State value (1 byte)
+    packet_data.push_back(state_value);
+    
+    return packet_data;
+}
+
+std::vector<uint8_t> SerializationSystem::serialize_combat_event(uint32_t attacker_id, uint32_t target_id,
+                                                                float damage_dealt, uint8_t damage_type, bool was_critical) {
+    std::vector<uint8_t> packet_data;
+    packet_data.push_back(static_cast<uint8_t>(PACKET_TYPE::COMBAT_EVENT));
+    
+    // Attacker ID (4 bytes, little-endian)
+    serialize_uint32(attacker_id, packet_data);
+    
+    // Target ID (4 bytes, little-endian)
+    serialize_uint32(target_id, packet_data);
+    
+    // Damage (4 bytes float, little-endian)
+    serialize_float(damage_dealt, packet_data);
+    
+    // Damage Type (1 byte)
+    packet_data.push_back(damage_type);
+    
+    // Was Critical (1 byte: 0 or 1)
+    packet_data.push_back(was_critical ? 1 : 0);
+    
+    return packet_data;
+}
+

@@ -24,6 +24,9 @@ enum class PACKET_TYPE : uint8_t {
     // Update packets
     ENTITY_POSITION,
     ENTITY_STATS,
+    ENTITY_STATE,
+    // Combat packets
+    COMBAT_EVENT,
     // Player related packets
     PLAYER_READY,
     PLAYER_DISCONNECT,
@@ -54,6 +57,10 @@ public:
                 return 19;  // type (1) + entity_id (4) + position_x (4) + position_y (4) + team_id (1) + type_string_length (4) + type_string_data (variable)
             case PACKET_TYPE::ENTITY_STATS:
                 return 25;  // type (1) + entity_id (4) + health (4) + max_health (4) + mana (4) + max_mana (4) + level (4)
+            case PACKET_TYPE::ENTITY_STATE:
+                return 6;  // type (1) + entity_id (4) + state_value (1)
+            case PACKET_TYPE::COMBAT_EVENT:
+                return 18;  // type (1) + attacker_id (4) + target_id (4) + damage (4) + damage_type (1) + was_critical (1) + padding (2)
             case PACKET_TYPE::GAME_START:
             case PACKET_TYPE::GAME_STATE:
             case PACKET_TYPE::PLAYER_DISCONNECT:

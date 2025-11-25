@@ -69,6 +69,29 @@ public:
      */
     static std::vector<uint8_t> serialize_entity_stat_change(uint32_t entity_id, const std::string& stat_name, const std::string& stat_value);
 
+    /**
+     * Serialize an entity state change packet.
+     * Used to sync entity state changes (e.g., SPAWNED, DEAD, MOVING).
+     * @param entity_id The ID of the entity
+     * @param state_value The new entity state as a uint8_t (see EntityState enum)
+     * @return Packet data as a vector of bytes
+     */
+    static std::vector<uint8_t> serialize_entity_state(uint32_t entity_id, uint8_t state_value);
+
+    /**
+     * Serialize a combat event packet.
+     * Broadcasts damage, critical hits, and other combat interactions.
+     * Format: type(1) + attacker_id(4) + target_id(4) + damage(4) + damage_type(1) + was_critical(1) + reserved(2)
+     * @param attacker_id The ID of the attacking entity
+     * @param target_id The ID of the target entity
+     * @param damage_dealt The amount of damage dealt (as float)
+     * @param damage_type The type of damage (0=PHYSICAL, 1=MAGICAL, 2=TRUE)
+     * @param was_critical Whether the attack was a critical hit
+     * @return Packet data as a vector of bytes
+     */
+    static std::vector<uint8_t> serialize_combat_event(uint32_t attacker_id, uint32_t target_id, 
+                                                       float damage_dealt, uint8_t damage_type, bool was_critical);
+
 private:
     /**
      * Helper function to serialize a 32-bit unsigned integer in little-endian format
