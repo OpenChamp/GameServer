@@ -30,6 +30,12 @@ struct AttackComponent : public Component {
     // === Current Attack ===
     bool attack_in_progress = false;               // Currently executing attack animation/projectile
     float attack_animation_progress = 0.0f;        // 0.0 to 1.0, used for timing hit/effects
+    float attack_animation_duration_ms = 300.0f;   // Total duration of attack animation
+    
+    // === Pending Attack Data (set by AutoAttackSystem) ===
+    float pending_damage = 0.0f;                   // Damage to apply when animation completes
+    EntityID pending_target = INVALID_ENTITY_ID;   // Target of pending attack
+    DamageType pending_damage_type = DamageType::PHYSICAL;  // Type of pending damage
     
     // === Attack Counters ===
     uint32_t total_attacks = 0;                    // Total attacks landed (for stats/quests)
