@@ -6,6 +6,7 @@
 #include <components/stats.hpp>
 #include <components/entity_state.hpp>
 #include <components/auto_attack.hpp>
+#include <components/intent.hpp>
 #include <libs/log.hpp>
 #include <cmath>
 
@@ -59,8 +60,20 @@ void MovementSystem::process_completed_paths(const SystemContext& ctx) {
         pathfinding->current_waypoint_index = 0;
         
         if (result->path.empty()) {
-            LOG_WARN("Entity %u received EMPTY path!", entity->get_id());
+            LOG_WARN("Entity %u received EMPTY path! Retry count: %u", 
+                    entity->get_id(), pathfinding->pathfinding_retry_count);
+            
+            // Increment retry counter
+            pathfinding->pathfinding_retry_count++;
+            
+            // On empty path, mark as stuck so it can be retried
+            if (entity_state) {
+                entity_state->current_state = EntityState::PATHFINDING_WAITING;
+            }
         } else {
+            // Successful path received, reset retry counter
+            pathfinding->pathfinding_retry_count = 0;
+            
             if (entity_state) {
                 entity_state->current_state = EntityState::MOVING;
                 entity_state->state_duration_ms = 0.0f;
@@ -76,11 +89,31 @@ void MovementSystem::retry_stuck_entities(const SystemContext& ctx) {
     for (auto* entity : entities) {
         PathfindingComponent* pathfinding = entity->get_component<PathfindingComponent>();
         EntityStateComponent* entity_state = entity->get_component<EntityStateComponent>();
+        IntentComponent* intent = entity->get_component<IntentComponent>();
+        Movement* movement = entity->get_component<Movement>();
         
-        if (pathfinding && entity_state && 
-            entity_state->current_state == EntityState::PATHFINDING_WAITING && 
+        if (!pathfinding || !entity_state || !movement) continue;
+        
+        if (entity_state->current_state == EntityState::PATHFINDING_WAITING && 
             pathfinding->waypoints.empty()) {
-            request_new_path(*entity, pathfinding->target_spawnpoint_id, ctx.navigation_service, ctx.map);
+            
+            // Only retry up to max retries, don't apply fallback
+            if (pathfinding->pathfinding_retry_count < PathfindingComponent::MAX_PATHFINDING_RETRIES) {
+                // Retry pathfinding request
+                if (intent && intent->type == IntentType::MOVE_TO_OBJECTIVE &&
+                    intent->target_spawnpoint_id < ctx.map->spawnpoints.size()) {
+                    request_new_path(*entity, intent->target_spawnpoint_id, ctx.navigation_service, ctx.map);
+                } else if (intent && intent->type == IntentType::ATTACK_TARGET && ctx.navigation_service) {
+                    PathRequest request;
+                    request.entity_id = entity->get_id();
+                    request.current_position = movement->position;
+                    request.destination = intent->target_position;
+                    request.entity_pathing_radius = 0.5f;
+                    ctx.navigation_service->MakeRequest(request);
+                }
+            } else {
+                LOG_WARN("Entity %u exceeded max pathfinding retries and will remain stuck on navmesh", entity->get_id());
+            }
         }
     }
 }
@@ -90,8 +123,55 @@ void MovementSystem::update_entity_movement(const SystemContext& ctx, Entity& en
     PathfindingComponent* pathfinding = entity.get_component<PathfindingComponent>();
     Stats* stats = entity.get_component<Stats>();
     EntityStateComponent* state_comp = entity.get_component<EntityStateComponent>();
+    IntentComponent* intent = entity.get_component<IntentComponent>();
     
     if (!movement || !stats) return;
+    
+    // Handle MOVE_TO_OBJECTIVE intent - set up pathfinding to target spawnpoint
+    if (intent && intent->type == IntentType::MOVE_TO_OBJECTIVE && pathfinding &&
+        pathfinding->waypoints.empty() && intent->target_spawnpoint_id < ctx.map->spawnpoints.size()) {
+        request_new_path(entity, intent->target_spawnpoint_id, ctx.navigation_service, ctx.map);
+        return;  // Path request submitted, will process next frame
+    }
+    
+    // Handle ATTACK_TARGET intent - request pathfinding to move toward target entity
+    if (intent && 
+        intent->type == IntentType::ATTACK_TARGET &&
+        intent->target_entity_id != INVALID_ENTITY_ID &&
+        pathfinding &&
+        pathfinding->waypoints.empty()
+    ) {
+        // Get the target entity's current position and check distance
+        Entity* target_entity = ctx.entity_manager.get_entity(intent->target_entity_id);
+        if (target_entity) {
+            Movement* target_movement = target_entity->get_component<Movement>();
+            if (target_movement && ctx.navigation_service && ctx.map && movement) {
+                // Check if already within attack range
+                float distance_to_target = (target_movement->position - movement->position).length();
+                if (distance_to_target < stats->attack_range) {
+                    // Already in range, no pathfinding needed
+                    LOG_DEBUG("Entity %u: Already in attack range of target %u (distance=%.1f, range=%.1f)",
+                             entity.get_id(), intent->target_entity_id, distance_to_target, stats->attack_range);
+                    return;
+                }
+                
+                PathRequest request;
+                request.entity_id = entity.get_id();
+                request.current_position = movement->position;
+                request.destination = target_movement->position;
+                request.entity_pathing_radius = 0.5f;
+                
+                if (ctx.navigation_service->MakeRequest(request)) {
+                    if (state_comp) {
+                        state_comp->current_state = EntityState::PATHFINDING_WAITING;
+                    }
+                    LOG_DEBUG("Entity %u: Requested pathfinding to attack target %u at (%.1f, %.1f)", 
+                             entity.get_id(), intent->target_entity_id, target_movement->position.x, target_movement->position.y);
+                }
+            }
+        }
+        return;  // Path request submitted, will process next frame
+    }
     
     // If holding for target, move toward the target entity
     if (state_comp && state_comp->current_state == EntityState::HOLDING_FOR_TARGET &&
@@ -152,7 +232,7 @@ void MovementSystem::update_entity_movement(const SystemContext& ctx, Entity& en
     
     // Update pathfinding entities (minions following waypoints)
     // TODO: Differentiate between minions and other pathfinding entities (AI Component?) -- cmkrist 18/11/2025
-    if (pathfinding) {
+    if (pathfinding && state_comp && state_comp->current_state == EntityState::MOVING) {
         update_stuck_detection(ctx, entity, *movement, *pathfinding, state_comp);
         update_waypoint_movement(ctx, entity, *movement, *stats, *pathfinding, state_comp);
     }
@@ -228,10 +308,30 @@ void MovementSystem::update_waypoint_movement(const SystemContext& ctx, Entity& 
                                              Movement& movement, Stats& stats, 
                                              PathfindingComponent& pathfinding, 
                                              EntityStateComponent* entity_state) {
-    // Skip if waiting for pathfinding or no waypoints
+    // Skip if waiting for pathfinding or not in MOVING state
     if (!pathfinding.waypoints.size() || 
         !entity_state || entity_state->current_state != EntityState::MOVING) {
         return;
+    }
+    
+    // If we have ATTACK_TARGET intent and are in MOVING state, check if we should stop due to attack range
+    auto* intent = entity.get_component<IntentComponent>();
+    if (intent && intent->type == IntentType::ATTACK_TARGET && intent->target_entity_id != INVALID_ENTITY_ID) {
+        Entity* target_entity = ctx.entity_manager.get_entity(intent->target_entity_id);
+        if (target_entity) {
+            Movement* target_movement = target_entity->get_component<Movement>();
+            if (target_movement) {
+                float distance_to_target = (target_movement->position - movement.position).length();
+                if (distance_to_target < stats.attack_range) {
+                    // We're now in attack range - clear waypoints and stop moving
+                    pathfinding.waypoints.clear();
+                    pathfinding.current_waypoint_index = 0;
+                    LOG_DEBUG("Entity %u: Reached attack range of target %u, stopping movement", 
+                             entity.get_id(), intent->target_entity_id);
+                    return;
+                }
+            }
+        }
     }
     
     // Check if reached end of path
@@ -334,14 +434,12 @@ void MovementSystem::request_new_path(Entity& entity, uint32_t target_spawnpoint
         return;
     }
     
-    Vec3 start = Vec3(movement->position.x, 0.0f, movement->position.y);
     Vec2 goal_2d = map->spawnpoints[target_spawnpoint_id];
-    Vec3 goal = Vec3(goal_2d.x, 0.0f, goal_2d.y);
     
     PathRequest request;
     request.entity_id = entity.get_id();
-    request.current_position = start;
-    request.destination = goal;
+    request.current_position = movement->position;
+    request.destination = goal_2d;
     request.entity_pathing_radius = 0.5f;
     
     if (navigation_service->MakeRequest(request)) {

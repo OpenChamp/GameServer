@@ -10,19 +10,29 @@
  * RESPONSIBILITIES:
  *   - Spawn entities from templates
  *   - Initialize entity components
+ *   - Find collision-free spawn positions
  *   - Link spawned entities to their controllers (players, waves, etc.)
- *   - Broadcast spawn events to clients
  * 
  * COMPONENTS USED:
  *   - Movement (position tracking)
- *   - NetworkEntityComponent (for broadcasting to clients)
+ *   - NetworkEntityComponent (for network synchronization)
  *   - PlayerOwnedComponent (for linking champions to players)
  *   - Stats (for entity attributes)
  * 
  * SYSTEM INTERACTION:
  *   - Called by WaveSystem, other spawning sources
- *   - Works with NetworkService to broadcast spawns
+ *   - Works with CollisionSystem to find free space
  *   - Integrates with EntityManager for entity creation
+ *   - NetworkSyncSystem handles broadcasting spawned entities to clients
+ * 
+ * NETWORK COMMUNICATION:
+ *   SpawningSystem does NOT directly broadcast to clients. Instead:
+ *   1. SpawningSystem creates entity and adds NetworkEntityComponent
+ *   2. Sets force_full_sync_next_frame = true on NetworkEntityComponent
+ *   3. NetworkSyncSystem detects new entity (last_sync_frame == 0)
+ *   4. NetworkSyncSystem broadcasts spawn packet to all clients
+ * 
+ *   This centralizes all client communication through NetworkSyncSystem.
  * 
  * USAGE:
  *   SpawningSystem spawning_system;
@@ -34,6 +44,10 @@ class SpawningSystem {
 public:
     /**
      * Spawn an entity from a template at a specific position.
+     * Automatically finds a collision-free position if the requested position is occupied.
+     * The spawned entity will be automatically synchronized to clients by NetworkSyncSystem
+     * on the next frame.
+     * 
      * @param ctx System context with entity manager and network service
      * @param template_id Template name (e.g., "melee_minion", "champion")
      * @param position Starting position for the entity
@@ -44,18 +58,4 @@ public:
                                        const std::string& template_id,
                                        const Vec2& position,
                                        uint8_t team_id);
-    
-    /**
-     * Broadcast entity spawn to all connected clients.
-     * @param ctx System context with network service
-     * @param entity_id ID of entity that was spawned
-     * @param position Spawn position
-     * @param team_id Team of the entity
-     * @param template_id Template used for spawning
-     */
-    void broadcast_entity_spawn(const SystemContext& ctx,
-                               EntityID entity_id,
-                               const Vec2& position,
-                               uint8_t team_id,
-                               const std::string& template_id) const;
 };

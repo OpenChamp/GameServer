@@ -172,6 +172,71 @@ void CollisionSystem::push_colliding_entities(const Entity& entity, const Vec2& 
     }
 }
 
+Vec2 CollisionSystem::find_free_space(const Vec2& position, float collision_radius, EntityManager& entity_manager) {
+    // Get all entities with movement components to check for collisions
+    auto moving_entities = entity_manager.get_entities_with_component<Movement>();
+    
+    // Check if base position is free
+    bool position_free = true;
+    for (auto* entity : moving_entities) {
+        const Movement* other_move = entity->get_component<Movement>();
+        if (other_move) {
+            float dx = position.x - other_move->position.x;
+            float dy = position.y - other_move->position.y;
+            float dist = std::sqrt(dx * dx + dy * dy);
+            float min_distance = collision_radius + other_move->collision_radius;
+            
+            if (dist < min_distance) {
+                position_free = false;
+                break;
+            }
+        }
+    }
+    
+    if (position_free) {
+        return position;
+    }
+    
+    // If base position is occupied, try to find a free spot nearby
+    // Use expanding circles to search for free space
+    constexpr float SEARCH_RADIUS = 5.0f;
+    constexpr int SEARCH_SAMPLES = 16;  // Number of angles to check
+    constexpr float PI = 3.14159265f;
+    
+    for (float search_distance = collision_radius * 2.0f; search_distance <= SEARCH_RADIUS; search_distance += 0.5f) {
+        for (int i = 0; i < SEARCH_SAMPLES; ++i) {
+            float angle = (2.0f * PI * i) / SEARCH_SAMPLES;
+            Vec2 candidate = position + Vec2(std::cos(angle) * search_distance, std::sin(angle) * search_distance);
+            
+            // Check if this candidate position is free
+            bool candidate_free = true;
+            for (auto* entity : moving_entities) {
+                const Movement* other_move = entity->get_component<Movement>();
+                if (other_move) {
+                    float dx = candidate.x - other_move->position.x;
+                    float dy = candidate.y - other_move->position.y;
+                    float dist = std::sqrt(dx * dx + dy * dy);
+                    float min_distance = collision_radius + other_move->collision_radius;
+                    
+                    if (dist < min_distance) {
+                        candidate_free = false;
+                        break;
+                    }
+                }
+            }
+            
+            if (candidate_free) {
+                return candidate;
+            }
+        }
+    }
+    
+    // If no free space found after search, return base position anyway
+    LOG_WARN("CollisionSystem: Could not find free space near (%.1f, %.1f) with radius %.1f, using base position",
+             position.x, position.y, collision_radius);
+    return position;
+}
+
 float CollisionSystem::distance(const Vec2& a, const Vec2& b) {
     float dx = a.x - b.x;
     float dy = a.y - b.y;

@@ -1,4 +1,5 @@
 #include <systems/util/player_manager.hpp>
+#include <systems/util/component_utility.hpp>
 #include <components/client_info.hpp>
 #include <components/readiness.hpp>
 #include <components/network_metadata.hpp>
@@ -162,7 +163,7 @@ void PlayerManager::update_player_latency(const std::string& client_id, EntityMa
     auto* metadata = player_entity->get_component<NetworkMetadataComponent>();
     if (metadata) {
         metadata->latency_ms = latency_ms;
-        metadata->update_activity();
+        ComponentUtility::update_metadata_activity(*metadata);
     }
 }
 

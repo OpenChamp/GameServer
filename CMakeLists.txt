@@ -57,23 +57,22 @@ set(GAMESERVER_SOURCES
 	src/systems/gameserver.cpp
 	src/systems/gameplay_coordinator.cpp
 	# Systems - Core Game Logic
-	src/systems/core/attack_execution_system.cpp
-	src/systems/core/auto_attack_system.cpp
 	src/systems/core/collision_system.cpp
+	src/systems/core/combat_system.cpp
+	src/systems/core/brain_system.cpp
 	src/systems/core/input_system.cpp
 	src/systems/core/movement_system.cpp
 	src/systems/core/network_sync_system.cpp
-	src/systems/core/npc_system.cpp
 	src/systems/core/spawning_system.cpp
-	src/systems/core/targeting_system.cpp
 	src/systems/core/wave_system.cpp
 	# Systems - Utilities
-	src/systems/util/combat_system.cpp
+	src/systems/util/combat_calculator.cpp
 	src/systems/util/data_loader.cpp
 	src/systems/util/map_system.cpp
 	src/systems/util/packet_handler.cpp
 	src/systems/util/player_manager.cpp
 	src/systems/util/serialization_system.cpp
+	src/systems/util/targeting_utility.cpp
 )
 
 # Header files are now included via consolidated headers:

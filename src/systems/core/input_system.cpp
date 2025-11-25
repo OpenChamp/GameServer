@@ -75,14 +75,10 @@ bool InputSystem::process_movement_input(Entity& entity, const Vec2& target_posi
             pathfinding = entity.get_component<PathfindingComponent>();
         }
         
-        // Request pathfinding path
-        Vec3 start = Vec3(movement->position.x, 0.0f, movement->position.y);
-        Vec3 goal = Vec3(target_position.x, 0.0f, target_position.y);
-        
         PathRequest request;
         request.entity_id = entity.get_id();
-        request.current_position = start;
-        request.destination = goal;
+        request.current_position = movement->position;
+        request.destination = target_position;
         request.entity_pathing_radius = 0.5f;
         
         if (ctx.navigation_service->MakeRequest(request)) {

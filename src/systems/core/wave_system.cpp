@@ -87,163 +87,16 @@ bool WaveSystem::create_minion(const SystemContext& ctx, const std::string& mini
         return false;
     }
     
-    // Find spawn position
+    // Get spawn position from map
     Vec2 spawn_pos = map_->spawnpoints[spawn_point_id];
     
-    // Get collision radius from template without creating an entity
-    float collision_radius = ctx.entity_manager.get_template_collision_radius(minion_template);
-    
-    // Find free spawn position
-    spawn_pos = find_free_spawn_position(spawn_point_id, collision_radius);
-    
     // Spawn entity using SpawningSystem
+    // (SpawningSystem will handle collision checking and finding free space)
     EntityID minion_id = spawning_system_.spawn_entity_from_template(ctx, minion_template, spawn_pos, team_id);
     if (minion_id == INVALID_ENTITY_ID) {
         LOG_ERROR("Failed to spawn minion of type %s", minion_template.c_str());
         return false;
     }
-    
-    Entity* minion = ctx.entity_manager.get_entity(minion_id);
-    if (!minion) {
-        return false;
-    }
-    
-    // Add pathfinding component if not already present
-    if (!minion->has_component<PathfindingComponent>()) {
-        auto pathfinding = std::make_unique<PathfindingComponent>();
-        minion->add_component(std::move(pathfinding));
-    }
-    
-    // Add entity state component if not already present
-    if (!minion->has_component<EntityStateComponent>()) {
-        auto entity_state = std::make_unique<EntityStateComponent>();
-        entity_state->current_state = EntityState::SPAWNED;
-        minion->add_component(std::move(entity_state));
-    }
-    
-    // Request initial path to next spawnpoint
-    uint32_t target_spawnpoint = (spawn_point_id + 1) % map_->spawnpoints.size();
-    request_minion_path(*minion, target_spawnpoint);
-    
     return true;
-}
-
-void WaveSystem::request_minion_path(Entity& entity, uint32_t target_spawnpoint_id) {
-    if (!navigation_service_ || !map_ || target_spawnpoint_id >= map_->spawnpoints.size()) {
-        LOG_WARN("Cannot request path: navigation_service=%p, map=%p, spawnpoint_id=%u", navigation_service_, map_, target_spawnpoint_id);
-        return;
-    }
-    
-    Movement* move = entity.get_component<Movement>();
-    PathfindingComponent* pathfinding = entity.get_component<PathfindingComponent>();
-    
-    if (!move || !pathfinding) {
-        LOG_WARN("Minion %u missing Movement or PathfindingComponent", entity.get_id());
-        return;
-    }
-    
-    Vec3 start = Vec3(move->position.x, 0.0f, move->position.y);
-    Vec2 goal_2d = map_->spawnpoints[target_spawnpoint_id];
-    Vec3 goal = Vec3(goal_2d.x, 0.0f, goal_2d.y);
-    
-    LOG_DEBUG("Minion %u requesting path from (%.1f, %.1f) to spawnpoint %u (%.1f, %.1f)", 
-             entity.get_id(), start.x, start.z, target_spawnpoint_id, goal.x, goal.z);
-    
-    PathRequest request;
-    request.entity_id = entity.get_id();
-    request.current_position = start;
-    request.destination = goal;
-    request.entity_pathing_radius = 0.5f;
-    
-    EntityStateComponent* entity_state = entity.get_component<EntityStateComponent>();
-    
-    if (navigation_service_->MakeRequest(request)) {
-        pathfinding->target_spawnpoint_id = target_spawnpoint_id;
-        // Transition to waiting state
-        if (entity_state) {
-            entity_state->current_state = EntityState::PATHFINDING_WAITING;
-            entity_state->state_duration_ms = 0.0f;
-        }
-        LOG_DEBUG("Path request queued for minion %u", entity.get_id());
-    } else {
-        // Mark as waiting for path so we retry next tick
-        pathfinding->target_spawnpoint_id = target_spawnpoint_id;
-        if (entity_state) {
-            entity_state->current_state = EntityState::PATHFINDING_WAITING;
-            entity_state->state_duration_ms = 0.0f;
-        }
-        LOG_DEBUG("Pathfinding queue full, will retry for minion %u", entity.get_id());
-    }
-}
-
-Vec2 WaveSystem::find_free_spawn_position(uint32_t spawn_point_id, float collision_radius) {
-    if (!map_ || spawn_point_id >= map_->spawnpoints.size()) {
-        // Fallback to default spawnpoint if invalid
-        return Vec2(0.0f, 0.0f);
-    }
-    
-    Vec2 base_position = map_->spawnpoints[spawn_point_id];
-    
-    // Get all entities with movement components to check for collisions
-    auto moving_entities = entity_manager_->get_entities_with_component<Movement>();
-    
-    // Check if base position is free
-    bool position_free = true;
-    for (auto* entity : moving_entities) {
-        const Movement* other_move = entity->get_component<Movement>();
-        if (other_move) {
-            float dx = base_position.x - other_move->position.x;
-            float dy = base_position.y - other_move->position.y;
-            float distance = std::sqrt(dx * dx + dy * dy);
-            float min_distance = collision_radius + other_move->collision_radius;
-            
-            if (distance < min_distance) {
-                position_free = false;
-                break;
-            }
-        }
-    }
-    
-    if (position_free) {
-        return base_position;
-    }
-    
-    // If base position is occupied, try to find a free spot nearby
-    // Use expanding circles to search for free space
-    constexpr float SPAWN_SEARCH_RADIUS = 5.0f;
-    constexpr int SEARCH_SAMPLES = 16;  // Number of angles to check
-    
-    for (float search_distance = collision_radius * 2.0f; search_distance <= SPAWN_SEARCH_RADIUS; search_distance += 0.5f) {
-        for (int i = 0; i < SEARCH_SAMPLES; ++i) {
-            float angle = (2.0f * 3.14159265f * i) / SEARCH_SAMPLES;
-            Vec2 candidate = base_position + Vec2(std::cos(angle) * search_distance, std::sin(angle) * search_distance);
-            
-            // Check if this candidate position is free
-            bool candidate_free = true;
-            for (auto* entity : moving_entities) {
-                const Movement* other_move = entity->get_component<Movement>();
-                if (other_move) {
-                    float dx = candidate.x - other_move->position.x;
-                    float dy = candidate.y - other_move->position.y;
-                    float distance = std::sqrt(dx * dx + dy * dy);
-                    float min_distance = collision_radius + other_move->collision_radius;
-                    
-                    if (distance < min_distance) {
-                        candidate_free = false;
-                        break;
-                    }
-                }
-            }
-            
-            if (candidate_free) {
-                return candidate;
-            }
-        }
-    }
-    
-    // If no free space found after search, return base position anyway
-    // (let collision detection handle it later? push everyone back?(not-implemented(tm))) -- cmkrist 16/11/2025
-    LOG_WARN("Could not find free spawn position for spawnpoint %u, using base position", spawn_point_id);
-    return base_position;
 }
 

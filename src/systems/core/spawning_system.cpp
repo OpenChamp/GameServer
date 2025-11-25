@@ -1,16 +1,22 @@
 #include <systems/core/spawning_system.hpp>
+#include <systems/core/collision_system.hpp>
 #include <components/movement.hpp>
 #include <components/stats.hpp>
 #include <components/network_entity.hpp>
 #include <components/entity_state.hpp>
-#include <systems/util/serialization_system.hpp>
-#include <services/network_service.hpp>
+#include <components/intent.hpp>
 #include <libs/log.hpp>
 
 EntityID SpawningSystem::spawn_entity_from_template(const SystemContext& ctx,
                                                     const std::string& template_id,
                                                     const Vec2& position,
                                                     uint8_t team_id) {
+    // Get collision radius from template to find free space
+    float collision_radius = ctx.entity_manager.get_template_collision_radius(template_id);
+    
+    // Find collision-free spawn position
+    Vec2 spawn_position = CollisionSystem::find_free_space(position, collision_radius, const_cast<EntityManager&>(ctx.entity_manager));
+    
     // Create entity from template
     Entity& entity = ctx.entity_manager.create_entity_from_template(template_id);
     EntityID entity_id = entity.get_id();
@@ -20,10 +26,10 @@ EntityID SpawningSystem::spawn_entity_from_template(const SystemContext& ctx,
         return INVALID_ENTITY_ID;
     }
     
-    // Set position
+    // Set position (collision-checked position)
     auto* move = entity.get_component<Movement>();
     if (move) {
-        move->position = position;
+        move->position = spawn_position;
     }
     
     // Set team ID
@@ -32,6 +38,15 @@ EntityID SpawningSystem::spawn_entity_from_template(const SystemContext& ctx,
         stats->team_id = team_id;
         LOG_INFO("Spawned minion (ID %u) with health=%f, max_health=%f, team=%u", 
                  entity_id, stats->health, stats->max_health, team_id);
+    }
+    
+    // Adjust intent objective target based on team
+    // Team 1 moves toward spawnpoint 1, Team 2 moves toward spawnpoint 0 (opposite direction)
+    auto* intent = entity.get_component<IntentComponent>();
+    if (intent && intent->type == IntentType::MOVE_TO_OBJECTIVE) {
+        intent->target_spawnpoint_id = (team_id == 1) ? 1 : 0;
+        LOG_DEBUG("Entity %u (team %u): Set objective target to spawnpoint %u", 
+                 entity_id, team_id, intent->target_spawnpoint_id);
     }
     
     // Add network entity component for syncing
@@ -48,28 +63,12 @@ EntityID SpawningSystem::spawn_entity_from_template(const SystemContext& ctx,
         entity.add_component(std::move(entity_state));
     }
     
-    // Broadcast spawn to clients - NOTE: NetworkSyncSystem will handle first sync
-    // The entity position will be sent in the same frame via NetworkSyncSystem
-    broadcast_entity_spawn(ctx, entity_id, position, team_id, template_id);
-    
     LOG_INFO("Spawned entity (ID %u) from template '%s' at (%.1f, %.1f), team %u",
-             entity_id, template_id.c_str(), position.x, position.y, team_id);
+             entity_id, template_id.c_str(), spawn_position.x, spawn_position.y, team_id);
+    
+    // NetworkSyncSystem will broadcast spawn to clients on first sync (when last_sync_frame == 0)
+    // This centralizes all network communication through the SyncManager
     
     return entity_id;
 }
 
-void SpawningSystem::broadcast_entity_spawn(const SystemContext& ctx,
-                                           EntityID entity_id,
-                                           const Vec2& position,
-                                           uint8_t team_id,
-                                           const std::string& template_id) const {
-    if (!ctx.network_service) {
-        return;
-    }
-    
-    // Serialize and broadcast entity spawn packet
-    std::vector<uint8_t> packet = SerializationSystem::serialize_entity_spawn(entity_id, position, team_id, template_id);
-    if (!packet.empty()) {
-        ctx.network_service->broadcast_packet(packet);
-    }
-}

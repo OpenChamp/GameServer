@@ -17,6 +17,7 @@
         attack_speed="1.0"
     />
     <pathfinding />
+    <state />
     <npc
         type="minion" 
         chase_distance="10.0"
@@ -34,4 +35,6 @@
     />
     <target targeting_mode="NEAREST" />
     <attack />
+    <!-- Initial Intent: Move toward lane objective (BrainSystem reads this and controls minion behavior) -->
+    <intent type="move_to_objective" priority="normal" target_spawnpoint_id="1" objective_index="0" />
 </entity>

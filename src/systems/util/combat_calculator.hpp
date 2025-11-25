@@ -6,7 +6,7 @@
 #include <vector>
 
 /**
- * CombatSystem - Handles damage calculation and application
+ * CombatCalculator - Handles damage calculation and application
  * 
  * RESPONSIBILITIES:
  *   - Damage calculation and application
@@ -19,7 +19,7 @@
  *   This system is purely data-driven. It only applies damage, healing, and
  *   mana restoration based on external input (from skills, auto-attacks, etc).
  *   Auto-attack behavior, cooldown management, and target selection are handled
- *   by the AutoAttackSystem.
+ *   by the CombatSystem.
  * 
  * COMPONENTS USED:
  *   - Stats (base damage, armor, resist, health)
@@ -28,15 +28,15 @@
  * 
  * SYSTEM INTERACTION:
  *   - Works with NetworkSyncSystem to broadcast combat effects
- *   - AutoAttackSystem calls apply_damage to execute attacks
+ *   - CombatSystem calls apply_damage to execute attacks
  *   - Triggered by other systems for damage/healing events
  *   - Coordinates with GameplayCoordinator for execution order
  */
-class CombatSystem {
+class CombatCalculator {
 public:
     /**
      * Update all combat for this frame.
-     * The combat system is data-driven - actual combat is triggered externally.
+     * The combat calculator is data-driven - actual combat is triggered externally.
      * @param ctx System context with entity manager, services, and delta time
      */
     

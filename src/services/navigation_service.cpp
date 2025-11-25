@@ -15,7 +15,7 @@
 struct NavigationService::NavServiceBackend {
     std::thread worker;
     Map map;
-    std::atomic<bool> running{true};
+    std::atomic<bool> running{false};
     std::queue<PathRequest> requests;
     std::queue<PathResult> results;
     std::queue<PathResult> waitingResults;
@@ -24,6 +24,11 @@ struct NavigationService::NavServiceBackend {
     FrameTimer frame_timer = FrameTimer(30);
 
     NavServiceBackend() {
+        // Don't start thread yet - wait for map to be assigned
+    }
+    
+    void start_worker() {
+        running = true;
         worker = std::thread([this]() {
             LOG_INFO("Spinning off NavigationService backend thread");
             start_work();
@@ -64,17 +69,13 @@ struct NavigationService::NavServiceBackend {
             // the lock is unlocked, take your time
             // =================================================================
 
-            // Perform A* pathfinding on the 2D navmesh
-            Vec2 start_2d(req.current_position.x, req.current_position.z);
-            Vec2 goal_2d(req.destination.x, req.destination.z);
-
             // Create local copies of the navmesh data for thread-safe pathfinding
             std::vector<Vec2> navmesh_vertices = this->map.vertices;
             std::vector<std::vector<uint32_t>> navmesh_polygons = this->map.polygons;
 
             std::vector<Vec2> path_2d = AStarPathfinder::FindPath(
-                start_2d,
-                goal_2d,
+                req.current_position,
+                req.destination,
                 navmesh_vertices,
                 navmesh_polygons,
                 req.entity_pathing_radius
@@ -87,7 +88,7 @@ struct NavigationService::NavServiceBackend {
             
             if (res.path.empty()) {
                 LOG_WARN("Navigation: Entity %u path from (%.1f, %.1f) to (%.1f, %.1f) returned EMPTY PATH", 
-                         req.entity_id, start_2d.x, start_2d.y, goal_2d.x, goal_2d.y);
+                         req.entity_id, req.current_position.x, req.current_position.y, req.destination.x, req.destination.y);
             } else {
                 LOG_DEBUG("Navigation: Entity %u path with %zu waypoints", req.entity_id, res.path.size());
             }
@@ -126,6 +127,7 @@ struct NavigationService::NavServiceBackend {
 NavigationService::NavigationService(Map map_object) {
     impl_ = std::make_unique<NavServiceBackend>();
     impl_->map = std::move(map_object);
+    impl_->start_worker();  // Start thread after map is assigned
 }
 
 NavigationService::~NavigationService() = default;

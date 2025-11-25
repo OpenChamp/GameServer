@@ -8,7 +8,7 @@
  * TargetComponent - Tracks current attack target
  * 
  * USAGE: Add to entities that need target selection (minions, champions)
- * SYSTEMS: CombatSystem, AutoAttackSystem, TargetingSystem
+ * SYSTEMS: CombatSystem
  * COMPANIONS: AttackComponent, Movement
  * 
  * PURPOSE:
@@ -55,62 +55,6 @@ struct TargetComponent : public Component {
     bool has_target = false;                         // Whether current_target is valid and in range
     bool target_in_range = false;                    // Whether target is in attack range
     float distance_to_target = 0.0f;                 // Cached distance to current target
-    
-    /**
-     * Set a specific target.
-     * @param target_id Entity ID to target
-     */
-    void set_target(EntityID target_id) {
-        current_target = target_id;
-        has_target = (target_id != INVALID_ENTITY_ID);
-        last_target_search_ms = 0.0f;
-    }
-    
-    /**
-     * Clear current target.
-     */
-    void clear_target() {
-        current_target = INVALID_ENTITY_ID;
-        has_target = false;
-        target_in_range = false;
-        distance_to_target = 0.0f;
-    }
-    
-    /**
-     * Check if should search for new target.
-     * @param current_time_ms Current game time
-     * @return true if enough time has passed since last search
-     */
-    bool should_search_for_target(float current_time_ms) const {
-        return (current_time_ms - last_target_search_ms) >= target_search_interval_ms;
-    }
-    
-    /**
-     * Mark that target search was performed.
-     * @param current_time_ms Current game time
-     */
-    void mark_target_searched(float current_time_ms) {
-        last_target_search_ms = current_time_ms;
-    }
-    
-    /**
-     * Check if current target is still valid.
-     * @return true if target exists and is in range
-     */
-    bool is_target_valid() const {
-        return has_target && current_target != INVALID_ENTITY_ID && 
-               distance_to_target <= target_loss_range;
-    }
-    
-    /**
-     * Update distance to target (usually called by CombatSystem).
-     * @param distance Current distance in game units
-     * @param attack_range Attack range threshold
-     */
-    void update_target_distance(float distance, float attack_range) {
-        distance_to_target = distance;
-        target_in_range = (distance <= attack_range);
-    }
     
     COMPONENT_TYPE_ID(TargetComponent, 2021)
 };

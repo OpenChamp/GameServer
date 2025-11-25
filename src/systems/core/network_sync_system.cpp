@@ -1,5 +1,6 @@
 #include <systems/core/network_sync_system.hpp>
 #include <systems/util/serialization_system.hpp>
+#include <systems/util/component_utility.hpp>
 #include <components/movement.hpp>
 #include <components/entity_state.hpp>
 #include <components/network_entity.hpp>
@@ -113,7 +114,7 @@ void NetworkSyncSystem::update(const SystemContext& ctx) {
             Vec2 pos = move ? move->position : Vec2(0, 0);
             EntityState state_val = state ? state->current_state : EntityState::SPAWNED;
             
-            net_comp->mark_synced(pos, state_val, stats, current_frame_);
+            ComponentUtility::mark_network_entity_synced(*net_comp, pos, state_val, stats, current_frame_);
             LOG_DEBUG("Synced entity %u (is_first_sync=%s) at position (%.1f, %.1f), state=%d, packets=%zu", 
                      entity->get_id(), is_first_sync ? "true" : "false", pos.x, pos.y, (int)state_val, packets.size());
         }
@@ -139,17 +140,17 @@ bool NetworkSyncSystem::has_entity_changed(const Entity& entity, uint32_t curren
     }
     
     // Check position change
-    if (move && net_comp->has_position_changed(move->position)) {
+    if (move && ComponentUtility::has_network_position_changed(*net_comp, move->position)) {
         return true;
     }
     
     // Check state change (for state transitions)
-    if (state && net_comp->has_state_changed(state->current_state)) {
+    if (state && ComponentUtility::has_network_state_changed(*net_comp, state->current_state)) {
         return true;
     }
     
     // Check for stat changes (health, mana, level, etc.)
-    if (stats && net_comp->has_stats_changed(*stats)) {
+    if (stats && ComponentUtility::has_network_stats_changed(*net_comp, *stats)) {
         return true;
     }
     
@@ -164,9 +165,9 @@ bool NetworkSyncSystem::has_entity_changed(const Entity& entity, uint32_t curren
         LOG_INFO("Frame %u: Entity %u state=%d, sync_check: moving=%s, pos_changed=%s, state_changed=%s, stats_changed=%s, force=%s",
                  current_frame, entity.get_id(), (int)state->current_state,
                  (state->current_state == EntityState::MOVING) ? "yes" : "no",
-                 move && net_comp->has_position_changed(move->position) ? "yes" : "no",
-                 state && net_comp->has_state_changed(state->current_state) ? "yes" : "no",
-                 stats && net_comp->has_stats_changed(*stats) ? "yes" : "no",
+                 move && ComponentUtility::has_network_position_changed(*net_comp, move->position) ? "yes" : "no",
+                 state && ComponentUtility::has_network_state_changed(*net_comp, state->current_state) ? "yes" : "no",
+                 stats && ComponentUtility::has_network_stats_changed(*net_comp, *stats) ? "yes" : "no",
                  net_comp->force_full_sync_next_frame ? "yes" : "no");
         logged_frames++;
     }
@@ -202,7 +203,7 @@ std::vector<std::vector<uint8_t>> NetworkSyncSystem::serialize_entity_update(Ent
         packets.push_back(SerializationSystem::serialize_entity_position(entity_id, move->position));
     } else {
         // Delta sync - only if position changed
-        if (net_comp->has_position_changed(move->position)) {
+        if (ComponentUtility::has_network_position_changed(*net_comp, move->position)) {
             packets.push_back(SerializationSystem::serialize_entity_position(entity_id, move->position));
         }
     }
@@ -234,7 +235,7 @@ std::vector<std::vector<uint8_t>> NetworkSyncSystem::serialize_entity_update(Ent
             packets.push_back(SerializationSystem::serialize_entity_stat_change(entity_id, "max_mana", oss.str()));
             
             packets.push_back(SerializationSystem::serialize_entity_stat_change(entity_id, "level", std::to_string(stats->level)));
-        } else if (net_comp->has_stats_changed(*stats)) {
+        } else if (ComponentUtility::has_network_stats_changed(*net_comp, *stats)) {
             // Delta sync - only send packets for stats that changed
             auto stat_packets = create_stat_change_packets(entity_id, *stats, *net_comp->last_synced_stats);
             if (!stat_packets.empty()) {
@@ -250,7 +251,7 @@ std::vector<std::vector<uint8_t>> NetworkSyncSystem::serialize_entity_update(Ent
     if (send_full_state || !net_comp) {
         // Full state sync - always send state
         packets.push_back(SerializationSystem::serialize_entity_state(entity_id, static_cast<uint8_t>(state->current_state)));
-    } else if (net_comp->has_state_changed(state->current_state)) {
+    } else if (ComponentUtility::has_network_state_changed(*net_comp, state->current_state)) {
         // Delta sync - only send state if it changed
         packets.push_back(SerializationSystem::serialize_entity_state(entity_id, static_cast<uint8_t>(state->current_state)));
     }

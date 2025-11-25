@@ -1,5 +1,6 @@
 #include <systems/util/packet_handler.hpp>
 #include <systems/util/player_manager.hpp>
+#include <systems/util/component_utility.hpp>
 #include <systems/entity_manager.hpp>
 #include <systems/core/input_system.hpp>
 #include <services/network_service.hpp>
@@ -36,7 +37,7 @@ void PacketHandler::handle_packet(const std::string& client_id, const uint8_t* d
         if (player_entity) {
             auto* metadata = player_entity->get_component<NetworkMetadataComponent>();
             if (metadata) {
-                metadata->update_activity();
+                ComponentUtility::update_metadata_activity(*metadata);
             }
         }
     }

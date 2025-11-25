@@ -90,6 +90,17 @@ public:
      * @param entity_manager Reference to entity manager for finding colliding entities
      */
     static void push_colliding_entities(const Entity& entity, const Vec2& proposed_position, EntityManager& entity_manager);
+    
+    /**
+     * Find a free spawn position near a given location.
+     * Searches for a collision-free position using expanding circle pattern.
+     * 
+     * @param position The desired spawn position
+     * @param collision_radius The collision radius of the entity to spawn (default 1.0)
+     * @param entity_manager Reference to entity manager to check existing entities
+     * @return A nearby collision-free position, or the original position if none found
+     */
+    static Vec2 find_free_space(const Vec2& position, float collision_radius, EntityManager& entity_manager);
 
 private:
     /**

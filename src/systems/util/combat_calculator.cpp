@@ -1,4 +1,4 @@
-#include <systems/util/combat_system.hpp>
+#include <systems/util/combat_calculator.hpp>
 #include <components/entity_state.hpp>
 #include <components/network_entity.hpp>
 #include <libs/log.hpp>
@@ -6,7 +6,7 @@
 #include <random>
 #include <algorithm>
 
-std::vector<CombatSystem::DamageEvent> CombatSystem::apply_damage(
+std::vector<CombatCalculator::DamageEvent> CombatCalculator::apply_damage(
     EntityManager& entity_manager,
     EntityID attacker_id,
     EntityID target_id,
@@ -136,7 +136,7 @@ std::vector<CombatSystem::DamageEvent> CombatSystem::apply_damage(
     return events;
 }
 
-bool CombatSystem::apply_heal(
+bool CombatCalculator::apply_heal(
     EntityManager& entity_manager,
     EntityID target_id,
     float heal_amount)
@@ -157,7 +157,7 @@ bool CombatSystem::apply_heal(
     return true;
 }
 
-bool CombatSystem::restore_mana(
+bool CombatCalculator::restore_mana(
     EntityManager& entity_manager,
     EntityID target_id,
     float mana_amount)
@@ -178,7 +178,7 @@ bool CombatSystem::restore_mana(
     return true;
 }
 
-float CombatSystem::calculate_damage_reduction(float base_damage, int resistance) const
+float CombatCalculator::calculate_damage_reduction(float base_damage, int resistance) const
 {
     // Damage reduction formula: damage * (100 / (100 + resistance))
     // This ensures that 100 resistance reduces damage by 50%, 200 resistance by 66%, etc.
@@ -189,7 +189,7 @@ float CombatSystem::calculate_damage_reduction(float base_damage, int resistance
     return base_damage * (100.0f / (100.0f + resistance));
 }
 
-float CombatSystem::calculate_critical_hit(const Stats& attacker)
+float CombatCalculator::calculate_critical_hit(const Stats& attacker)
 {
     // Random number between 0 and 99
     int roll = std::rand() % 100;

@@ -32,5 +32,9 @@ struct PathfindingComponent : public Component {
     // Threshold for considering entity stuck (milliseconds)
     static constexpr float STUCK_THRESHOLD_MS = 2000.0f;
     
+    // Counter for failed pathfinding attempts (to prevent infinite retries)
+    uint32_t pathfinding_retry_count = 0;
+    static constexpr uint32_t MAX_PATHFINDING_RETRIES = 3;
+    
     COMPONENT_TYPE_ID(PathfindingComponent, 2009)
 };

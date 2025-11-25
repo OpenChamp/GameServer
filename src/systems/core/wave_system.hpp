@@ -79,20 +79,4 @@ private:
      * @return true if minion spawned successfully
      */
     bool create_minion(const SystemContext& ctx, const std::string& minion_template, uint8_t team_id, uint32_t spawn_point_id);
-    
-    /**
-     * Request a path for a minion to its target spawnpoint.
-     * @param entity Entity with Movement and PathfindingComponent
-     * @param target_spawnpoint_id Target spawnpoint ID
-     */
-    void request_minion_path(Entity& entity, uint32_t target_spawnpoint_id);
-    
-    /**
-     * Find a free spawn position near the given spawnpoint.
-     * Checks if there are other entities at the spawnpoint and offsets position if needed.
-     * @param spawn_point_id The spawnpoint index
-     * @param collision_radius The radius to check for collisions
-     * @return A free position near the spawnpoint
-     */
-    Vec2 find_free_spawn_position(uint32_t spawn_point_id, float collision_radius);
 };

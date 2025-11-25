@@ -5,7 +5,7 @@
 #include <queue>
 #include <cstdint>
 
-struct Entity;
+class Entity;
 typedef uint32_t EntityID;
 
 /**

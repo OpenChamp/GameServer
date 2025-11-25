@@ -4,6 +4,7 @@
 #include <components/movement.hpp>
 #include <components/stats.hpp>
 #include <components/entity_state.hpp>
+#include <components/intent.hpp>
 #include <libs/log.hpp>
 #include <sstream>
 #include <iomanip>
@@ -18,6 +19,37 @@
     #pragma comment(lib, "ws2_32.lib")
     #define SHUT_RDWR SD_BOTH
 #endif
+
+// Helper functions to convert enums to strings
+static std::string entity_state_to_string(EntityState state) {
+    switch (state) {
+        case EntityState::SPAWNED: return "SPAWNED";
+        case EntityState::IDLE: return "IDLE";
+        case EntityState::PATHFINDING_WAITING: return "PATHFINDING_WAITING";
+        case EntityState::HOLDING_FOR_TARGET: return "HOLDING_FOR_TARGET";
+        case EntityState::MOVING: return "MOVING";
+        case EntityState::STOPPING: return "STOPPING";
+        case EntityState::STUCK: return "STUCK";
+        case EntityState::ATTACKING: return "ATTACKING";
+        case EntityState::DEAD: return "DEAD";
+        default: return "UNKNOWN";
+    }
+}
+
+static std::string intent_type_to_string(IntentType type) {
+    switch (type) {
+        case IntentType::NONE: return "NONE";
+        case IntentType::MOVE_TO_OBJECTIVE: return "MOVE_TO_OBJECTIVE";
+        case IntentType::MOVE_TO_POSITION: return "MOVE_TO_POSITION";
+        case IntentType::MOVE_TO_SPAWNPOINT: return "MOVE_TO_SPAWNPOINT";
+        case IntentType::ATTACK_TARGET: return "ATTACK_TARGET";
+        case IntentType::DEFEND_POSITION: return "DEFEND_POSITION";
+        case IntentType::CHASE_ENEMY: return "CHASE_ENEMY";
+        case IntentType::RETREAT: return "RETREAT";
+        case IntentType::PATROL: return "PATROL";
+        default: return "UNKNOWN";
+    }
+}
 
 VisualizerService::VisualizerService(uint16_t port)
     : port_(port) {
@@ -302,6 +334,44 @@ std::string VisualizerService::get_html_page() const {
         function drawEntities(entities) {
             if (!entities) return;
             
+            // First pass: draw targeting lines
+            for (let entity of entities) {
+                if (entity.target_id !== undefined) {
+                    const attacker_x = entity.position.x * 10 + 400;
+                    const attacker_y = entity.position.z * 10 + 300;
+                    
+                    // Find target entity
+                    const target = entities.find(e => e.id === entity.target_id);
+                    if (target) {
+                        const target_x = target.position.x * 10 + 400;
+                        const target_y = target.position.z * 10 + 300;
+                        
+                        // Draw targeting line
+                        ctx.strokeStyle = entity.team_id === 1 ? '#4080ff' : '#ff4080';
+                        ctx.lineWidth = 2;
+                        ctx.setLineDash([5, 5]);
+                        ctx.beginPath();
+                        ctx.moveTo(attacker_x, attacker_y);
+                        ctx.lineTo(target_x, target_y);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+                        
+                        // Draw arrowhead at target
+                        const angle = Math.atan2(target_y - attacker_y, target_x - attacker_x);
+                        const arrowSize = 8;
+                        
+                        ctx.fillStyle = entity.team_id === 1 ? '#4080ff' : '#ff4080';
+                        ctx.beginPath();
+                        ctx.moveTo(target_x, target_y);
+                        ctx.lineTo(target_x - arrowSize * Math.cos(angle - Math.PI / 6), target_y - arrowSize * Math.sin(angle - Math.PI / 6));
+                        ctx.lineTo(target_x - arrowSize * Math.cos(angle + Math.PI / 6), target_y - arrowSize * Math.sin(angle + Math.PI / 6));
+                        ctx.closePath();
+                        ctx.fill();
+                    }
+                }
+            }
+            
+            // Second pass: draw entities
             for (let entity of entities) {
                 const x = entity.position.x * 10 + 400;
                 const y = entity.position.z * 10 + 300;
@@ -316,6 +386,15 @@ std::string VisualizerService::get_html_page() const {
                 ctx.fillStyle = '#ffffff';
                 ctx.font = '10px Arial';
                 ctx.fillText(entity.id, x - 10, y - 8);
+                
+                // Highlight if attacking
+                if (entity.state === 'ATTACKING') {
+                    ctx.strokeStyle = '#ffff00';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(x, y, 6, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
             }
         }
         
@@ -332,7 +411,19 @@ std::string VisualizerService::get_html_page() const {
             for (let entity of entities) {
                 const el = document.createElement('div');
                 el.className = 'entity';
-                el.innerHTML = `<strong>Entity ${entity.id}</strong> | Team ${entity.team_id} | State: ${entity.state} | Pos: (${entity.position.x.toFixed(1)}, ${entity.position.z.toFixed(1)})`;
+                
+                let targetStr = '';
+                if (entity.target_id !== undefined) {
+                    const target = entities.find(e => e.id === entity.target_id);
+                    const targetName = target ? `E${entity.target_id}` : `E${entity.target_id} (DEAD)`;
+                    targetStr = ` <span style="color: #ff8080">→ Targeting ${targetName}</span>`;
+                }
+                
+                const stateColor = entity.state === 'ATTACKING' ? '#ffff00' : 
+                                  entity.state === 'MOVING' ? '#4da6ff' :
+                                  entity.state === 'DEAD' ? '#ff0000' : '#ffb347';
+                
+                el.innerHTML = `<strong>E${entity.id}</strong> [Team ${entity.team_id}] | Intent: <span style="color: #4da6ff">${entity.intent}</span> | State: <span style="color: ${stateColor}"><b>${entity.state}</b></span>${targetStr} | (${entity.position.x.toFixed(1)}, ${entity.position.z.toFixed(1)})`;
                 div.appendChild(el);
             }
         }
@@ -389,12 +480,17 @@ std::string VisualizerService::get_game_state_json() const {
             auto* move = entity->get_component<Movement>();
             auto* stats = entity->get_component<Stats>();
             auto* state = entity->get_component<EntityStateComponent>();
+            auto* intent = entity->get_component<IntentComponent>();
             
             json << "{";
             json << "\"id\":" << entity->get_id() << ",";
             json << "\"position\":{\"x\":" << move->position.x << ",\"z\":" << move->position.y << "},";
             json << "\"team_id\":" << (int)(stats ? stats->team_id : 0) << ",";
-            json << "\"state\":\"" << (state ? std::to_string((int)state->current_state) : "UNKNOWN") << "\"";
+            json << "\"state\":\"" << (state ? entity_state_to_string(state->current_state) : "UNKNOWN") << "\",";
+            json << "\"intent\":\"" << (intent ? intent_type_to_string(intent->type) : "UNKNOWN") << "\"";
+            if (intent && intent->target_entity_id != INVALID_ENTITY_ID) {
+                json << ",\"target_id\":" << intent->target_entity_id;
+            }
             json << "}";
         }
     }

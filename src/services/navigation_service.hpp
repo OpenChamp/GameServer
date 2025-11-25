@@ -11,8 +11,8 @@ class PathRequest {
 public:
     uint32_t entity_id;
     float entity_pathing_radius;
-    Vec3 current_position;
-    Vec3 destination;
+    Vec2 current_position;
+    Vec2 destination;
 };
 
 class PathResult {

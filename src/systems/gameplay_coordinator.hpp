@@ -3,17 +3,19 @@
 #include "system_context.hpp"
 
 /* === Core Systems === */
-// Input
+// Input & AI
 #include <systems/core/input_system.hpp>
-#include <systems/core/npc_system.hpp>
+#include <systems/core/brain_system.hpp>
+
+// Spawning
+#include <systems/core/wave_system.hpp>
 
 // Physics & Movement
 #include <systems/core/collision_system.hpp>
 #include <systems/core/movement_system.hpp>
 
 // Combat
-#include <systems/core/auto_attack_system.hpp>
-#include <systems/core/attack_execution_system.hpp>
+#include <systems/core/combat_system.hpp>
 
 // Networking
 #include <systems/core/network_sync_system.hpp>
@@ -33,13 +35,12 @@
  *   - Manage game state transitions (use GameServer)
  * 
  * SYSTEM UPDATE ORDER (important for correctness):
- *   1. WaveSystem - Spawns new entities for this frame
- *   2. MovementSystem - Updates entity positions based on paths
- *   3. CollisionSystem - Resolves overlaps and pushes entities apart
- *   4. AutoAttackSystem - Executes auto-attacks and manages cooldowns
- *   5. CombatSystem - Applies damage (data-driven by AutoAttackSystem)
- *   6. AttackExecutionSystem - Executes pending attacks with animation timing
- *   7. NetworkSyncSystem - Sends state updates to clients
+ *   1. WaveSystem - Creates entities in ECS
+ *   2. BrainSystem - NPC decision-making and intent management
+ *   3. MovementSystem - Updates entity positions based on paths
+ *   4. CollisionSystem - Resolves overlaps and pushes entities apart
+ *   5. CombatSystem - Handles all combat (auto-attacks, cooldowns, target search, attack execution)
+ *   6. NetworkSyncSystem - BROADCASTS ALL STATE CHANGES TO CLIENTS (spawns, updates, deaths)
  * 
  * USAGE:
  *   GameplayCoordinator gameplay;
@@ -76,13 +77,12 @@ public:
      * 
      * Order:
      *   1. WaveSystem::update() - Spawn new minions
-     *   2. MovementSystem::update() - Move entities
-     *   3. CollisionSystem::update() - Resolve collisions
-     *   4. AutoAttackSystem::update() - Manage auto-attacks and cooldowns
-     *   5. CombatSystem::update() - Apply damage (data-driven)
-     *   6. AttackExecutionSystem::update() - Execute pending attacks
-     *   7. NetworkSyncSystem::update() - Broadcast state
-     *   8. cleanup_dead_entities() - Remove entities marked for deletion
+     *   2. BrainSystem::update() - Process NPC intents
+     *   3. MovementSystem::update() - Move entities
+     *   4. CollisionSystem::update() - Resolve collisions
+     *   5. CombatSystem::update() - Manage all combat
+     *   6. NetworkSyncSystem::update() - Broadcast state
+     *   7. cleanup_dead_entities() - Remove entities marked for deletion
      * 
      * @param ctx System context containing entity manager and services
      */
@@ -102,6 +102,12 @@ public:
      * @param entity_id ID of entity to mark for cleanup
      */
     void mark_for_cleanup(EntityID entity_id);
+    
+    /**
+     * Get reference to brain system.
+     * @return Reference to BrainSystem
+     */
+    BrainSystem& get_brain_system() { return brain_system_; }
     
     /**
      * Get reference to input system.
@@ -134,32 +140,19 @@ public:
     NetworkSyncSystem& get_network_sync_system() { return network_sync_system_; }
     
     /**
-     * Get reference to auto-attack system.
-     * @return Reference to AutoAttackSystem
-     */
-    AutoAttackSystem& get_auto_attack_system() { return auto_attack_system_; }
-    
-    /**
-     * Get reference to attack execution system.
-     * @return Reference to AttackExecutionSystem
-     */
-    AttackExecutionSystem& get_attack_execution_system() { return attack_execution_system_; }
-    
-    /**
      * Get reference to combat system.
      * @return Reference to CombatSystem
      */
+    CombatSystem& get_combat_system() { return combat_system_; }
 
 private:
     InputSystem input_system_;
     std::unique_ptr<WaveSystem> wave_system_;
+    BrainSystem brain_system_;
     CollisionSystem collision_system_;
     MovementSystem movement_system_;
-    AutoAttackSystem auto_attack_system_;
     NetworkSyncSystem network_sync_system_;
     CombatSystem combat_system_;
-    AttackExecutionSystem attack_execution_system_;
-    NPCSystem npc_system_;
     
     // Entity cleanup tracking
     std::vector<EntityID> entities_marked_for_cleanup_;  // Entities to remove next frame
