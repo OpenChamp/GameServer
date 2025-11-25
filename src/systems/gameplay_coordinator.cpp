@@ -6,6 +6,9 @@ GameplayCoordinator::GameplayCoordinator()
     : wave_system_(nullptr) {
     // Systems initialized with default constructors
     // WaveSystem will be initialized via initialize_wave_system() before use
+    
+    // Link systems that depend on each other
+    attack_execution_system_.set_combat_system(&combat_system_);
 }
 
 void GameplayCoordinator::initialize_wave_system(EntityManager* entity_manager, NetworkService* network_service,
@@ -29,7 +32,8 @@ void GameplayCoordinator::update(const SystemContext& ctx) {
     collision_system_.update(ctx);
     
     // COMBAT SYSTEMS
-    combat_system_.update(ctx);
+    auto_attack_system_.update(ctx);  // Must run before CombatSystem and AttackExecutionSystem
+    attack_execution_system_.update(ctx);  // Must run after CombatSystem
     // PLAYER SYSTEMS
 
     // Synchronize to clients

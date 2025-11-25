@@ -6,7 +6,8 @@
 #include "wave_system.hpp"
 #include "movement_system.hpp"
 #include "network_sync_system.hpp"
-#include "combat_system.hpp"
+#include "auto_attack_system.hpp"
+#include "attack_execution_system.hpp"
 #include "npc_system.hpp"
 
 /**
@@ -26,8 +27,10 @@
  *   1. WaveSystem - Spawns new entities for this frame
  *   2. MovementSystem - Updates entity positions based on paths
  *   3. CollisionSystem - Resolves overlaps and pushes entities apart
- *   4. CombatSystem - Resolves damage and effects
- *   5. NetworkSyncSystem - Sends state updates to clients
+ *   4. AutoAttackSystem - Executes auto-attacks and manages cooldowns
+ *   5. CombatSystem - Applies damage (data-driven by AutoAttackSystem)
+ *   6. AttackExecutionSystem - Executes pending attacks with animation timing
+ *   7. NetworkSyncSystem - Sends state updates to clients
  * 
  * USAGE:
  *   GameplayCoordinator gameplay;
@@ -65,9 +68,12 @@ public:
      * Order:
      *   1. WaveSystem::update() - Spawn new minions
      *   2. MovementSystem::update() - Move entities
-     *   3. CombatSystem::update() - Auto-attacks and damage
-     *   4. NetworkSyncSystem::update() - Broadcast state
-     *   5. cleanup_dead_entities() - Remove entities marked for deletion
+     *   3. CollisionSystem::update() - Resolve collisions
+     *   4. AutoAttackSystem::update() - Manage auto-attacks and cooldowns
+     *   5. CombatSystem::update() - Apply damage (data-driven)
+     *   6. AttackExecutionSystem::update() - Execute pending attacks
+     *   7. NetworkSyncSystem::update() - Broadcast state
+     *   8. cleanup_dead_entities() - Remove entities marked for deletion
      * 
      * @param ctx System context containing entity manager and services
      */
@@ -119,18 +125,31 @@ public:
     NetworkSyncSystem& get_network_sync_system() { return network_sync_system_; }
     
     /**
+     * Get reference to auto-attack system.
+     * @return Reference to AutoAttackSystem
+     */
+    AutoAttackSystem& get_auto_attack_system() { return auto_attack_system_; }
+    
+    /**
+     * Get reference to attack execution system.
+     * @return Reference to AttackExecutionSystem
+     */
+    AttackExecutionSystem& get_attack_execution_system() { return attack_execution_system_; }
+    
+    /**
      * Get reference to combat system.
      * @return Reference to CombatSystem
      */
-    CombatSystem& get_combat_system() { return combat_system_; }
 
 private:
     InputSystem input_system_;
     std::unique_ptr<WaveSystem> wave_system_;
     CollisionSystem collision_system_;
     MovementSystem movement_system_;
+    AutoAttackSystem auto_attack_system_;
     NetworkSyncSystem network_sync_system_;
     CombatSystem combat_system_;
+    AttackExecutionSystem attack_execution_system_;
     NPCSystem npc_system_;
     
     // Entity cleanup tracking
