@@ -59,8 +59,9 @@ private:
     NavigationService* navigation_service_ = nullptr;
     const Map* map_ = nullptr;
     SpawningSystem spawning_system_;
-    float wave_interval_ms = 30000.0f;  // 30 seconds between waves
-    float wave_delay_ms = 1000.0f;      // 1 second delay between minions in a wave
+    float wave_interval_ms = 30000.0f;  // 30 seconds between waves (debug timing)
+    float first_wave_delay_ms = 1000.0f; // 1 second before first wave spawns (debug timing - reduced for testing)
+    float wave_delay_ms = 100.0f;      // 100ms delay between minions in a wave (debug timing - reduced for testing)
     float elapsed_time_ms;
     float last_spawn_timestamp;
     int minion_index;

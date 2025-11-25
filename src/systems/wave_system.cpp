@@ -72,7 +72,7 @@ void WaveSystem::update(const SystemContext& ctx) {
         }
     }
     // Wave Spawning
-    if (elapsed_time_ms >= wave_interval_ms) {
+    if (elapsed_time_ms >= (wave_index == 0 ? first_wave_delay_ms : wave_interval_ms)) {
         LOG_INFO("Spawning new wave");
         minion_index = 1;
         wave_index++;
@@ -90,13 +90,8 @@ bool WaveSystem::create_minion(const SystemContext& ctx, const std::string& mini
     // Find spawn position
     Vec2 spawn_pos = map_->spawnpoints[spawn_point_id];
     
-    // Get collision radius from template entity if available
-    Entity& temp = ctx.entity_manager.create_entity_from_template(minion_template);
-    float collision_radius = 0.5f;  // Default
-    if (auto* move = temp.get_component<Movement>()) {
-        collision_radius = move->collision_radius;
-    }
-    ctx.entity_manager.destroy_entity(temp.get_id());
+    // Get collision radius from template without creating an entity
+    float collision_radius = ctx.entity_manager.get_template_collision_radius(minion_template);
     
     // Find free spawn position
     spawn_pos = find_free_spawn_position(spawn_point_id, collision_radius);
