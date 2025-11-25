@@ -1,5 +1,5 @@
-#include "serialization_system.hpp"
-#include "components/stats.hpp"
+#include <systems/util/serialization_system.hpp>
+#include <components/stats.hpp>
 
 std::vector<uint8_t> SerializationSystem::serialize_packet(PACKET_TYPE packet_type) {
     std::vector<uint8_t> packet_data;

@@ -1,11 +1,11 @@
 #pragma once
+#include <cstdint>
 
+#include <systems/system_context.hpp>
+#include <systems/entity_manager.hpp>
+#include <systems/core/spawning_system.hpp>
 #include <services/network_service.hpp>
 #include <services/navigation_service.hpp>
-#include <systems/system_context.hpp>
-#include <systems/spawning_system.hpp>
-#include <cstdint>
-#include <systems/entity_manager.hpp>
 #include <components/map.hpp>
 
 /**

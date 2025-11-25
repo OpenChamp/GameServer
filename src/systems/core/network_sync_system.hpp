@@ -1,8 +1,8 @@
 #pragma once
 
-#include "entity_manager.hpp"
-#include "system_context.hpp"
-#include "services/network_service.hpp"
+#include <systems/entity_manager.hpp>
+#include <systems/system_context.hpp>
+#include <services/network_service.hpp>
 #include <vector>
 #include <cstdint>
 

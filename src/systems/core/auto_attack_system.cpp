@@ -1,8 +1,8 @@
-#include "auto_attack_system.hpp"
-#include "components/movement.hpp"
-#include "components/entity_state.hpp"
-#include "components/network_entity.hpp"
-#include <log.hpp>
+#include <systems/core/auto_attack_system.hpp>
+#include <components/movement.hpp>
+#include <components/entity_state.hpp>
+#include <components/network_entity.hpp>
+#include <libs/log.hpp>
 #include <cmath>
 #include <random>
 #include <algorithm>

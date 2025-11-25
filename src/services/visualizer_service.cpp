@@ -1,10 +1,10 @@
-#include "visualizer_service.hpp"
-#include "entity_manager.hpp"
-#include "components/map.hpp"
-#include "components/movement.hpp"
-#include "components/stats.hpp"
-#include "components/entity_state.hpp"
-#include <log.hpp>
+#include <services/visualizer_service.hpp>
+#include <systems/entity_manager.hpp>
+#include <components/map.hpp>
+#include <components/movement.hpp>
+#include <components/stats.hpp>
+#include <components/entity_state.hpp>
+#include <libs/log.hpp>
 #include <sstream>
 #include <iomanip>
 #include <vector>

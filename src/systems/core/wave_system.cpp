@@ -1,16 +1,16 @@
-#include <log.hpp>
-#include "wave_system.hpp"
-#include "entity_manager.hpp"
-#include "serialization_system.hpp"
-#include "services/network_service.hpp"
-#include "services/navigation_service.hpp"
+#include <libs/log.hpp>
+#include <systems/core/wave_system.hpp>
+#include <systems/entity_manager.hpp>
+#include <systems/util/serialization_system.hpp>
+#include <services/network_service.hpp>
+#include <services/navigation_service.hpp>
 #include <components/movement.hpp>
 #include <components/pathfinding.hpp>
 #include <components/entity_state.hpp>
 #include <vector>
 #include <string>
 #include <cmath>
-#include <network_entity.hpp>
+#include <components/network_entity.hpp>
 
 void WaveSystem::initialize(EntityManager* entity_manager, NetworkService* network_service,
                            NavigationService* navigation_service, const Map* map) {

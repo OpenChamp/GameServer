@@ -1,8 +1,8 @@
-#include "npc_system.hpp"
+#include <systems/core/npc_system.hpp>
 
-#include "components/entity_state.hpp"
-#include "components/npc_component.hpp"
-#include "components/auto_attack.hpp"
+#include <components/entity_state.hpp>
+#include <components/npc_component.hpp>
+#include <components/auto_attack.hpp>
 #include <cfloat>
 
 void NPCSystem::update(const SystemContext& ctx) {

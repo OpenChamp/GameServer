@@ -1,9 +1,9 @@
 #pragma once
 
-#include "entity_manager.hpp"
-#include "system_context.hpp"
-#include "combat_system.hpp"
-#include "components/attack.hpp"
+#include <systems/entity_manager.hpp>
+#include <systems/system_context.hpp>
+#include <systems/util/combat_system.hpp>
+#include <components/attack.hpp>
 
 /**
  * AttackExecutionSystem - Executes pending attacks and applies damage

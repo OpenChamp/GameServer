@@ -4,8 +4,8 @@
 #include <vector>
 #include <string>
 
-#include <systems/math.hpp>
-#include <systems/packet_validator.hpp>
+#include <libs/math.hpp>
+#include <systems/util/packet_validator.hpp>
 
 // Forward declarations
 struct Stats;

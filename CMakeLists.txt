@@ -52,77 +52,41 @@ set(GAMESERVER_SOURCES
 	src/services/navigation_service.cpp
 	src/services/astar_pathfinding.cpp
 	src/services/visualizer_service.cpp
-	# Systems
-	src/systems/combat_system.cpp
-	src/systems/auto_attack_system.cpp
-	src/systems/attack_execution_system.cpp
 	src/services/network_service.cpp
-	src/systems/data_loader.cpp
+	# Systems - Core
 	src/systems/gameserver.cpp
-	src/systems/input_system.cpp
-	src/systems/collision_system.cpp
-	src/systems/map_system.cpp
-	src/systems/movement_system.cpp
-	src/systems/network_sync_system.cpp
-	src/systems/npc_system.cpp
-	src/systems/serialization_system.cpp
-	src/systems/spawning_system.cpp
-	src/systems/wave_system.cpp
-	src/systems/player_manager.cpp
-	src/systems/packet_handler.cpp
 	src/systems/gameplay_coordinator.cpp
+	# Systems - Core Game Logic
+	src/systems/core/attack_execution_system.cpp
+	src/systems/core/auto_attack_system.cpp
+	src/systems/core/collision_system.cpp
+	src/systems/core/input_system.cpp
+	src/systems/core/movement_system.cpp
+	src/systems/core/network_sync_system.cpp
+	src/systems/core/npc_system.cpp
+	src/systems/core/spawning_system.cpp
+	src/systems/core/targeting_system.cpp
+	src/systems/core/wave_system.cpp
+	# Systems - Utilities
+	src/systems/util/combat_system.cpp
+	src/systems/util/data_loader.cpp
+	src/systems/util/map_system.cpp
+	src/systems/util/packet_handler.cpp
+	src/systems/util/player_manager.cpp
+	src/systems/util/serialization_system.cpp
 )
 
-# Header files (for IDE organization)
-set(GAMESERVER_HEADERS
-	src/systems/gameserver.hpp
-	src/components/game_state.hpp
-	src/entities/player.hpp
-	src/systems/packet_validator.hpp
-	src/components/errors.hpp
-	src/systems/entity_manager.hpp
-	src/components/component.hpp
-	src/components/movement.hpp
-	src/components/stats.hpp
-	src/systems/math.hpp
-	src/components/map.hpp
-	src/services/navigation_service.hpp
-	src/services/astar_pathfinding.hpp
-	src/services/network_service.hpp
-	src/systems/data_loader.hpp
-	src/systems/map_system.hpp
-	src/systems/combat_system.hpp
-	src/systems/auto_attack_system.hpp
-	src/systems/attack_execution_system.hpp
-	src/systems/movement_system.hpp
-	src/systems/serialization_system.hpp
-	src/systems/spawning_system.hpp
-	src/systems/wave_system.hpp
-	src/systems/network_sync_system.hpp
-	src/systems/npc_system.hpp
-	src/systems/player_manager.hpp
-	src/systems/input_system.hpp
-	src/systems/collision_system.hpp
-	src/systems/system_context.hpp
-	src/systems/packet_handler.hpp
-	src/systems/gameplay_coordinator.hpp
-	src/components/client_info.hpp
-	src/components/readiness.hpp
-	src/components/network_metadata.hpp
-	src/components/wave_state.hpp
-	src/components/network_entity.hpp
-	src/components/player_owned.hpp
-	src/components/attack.hpp
-	src/components/target.hpp
-	src/components/auto_attack.hpp
-	src/services/visualizer_service.hpp
-)
+# Header files are now included via consolidated headers:
+# - <components/component.hpp> for all component types
+# - <systems/system.hpp> for all system types
+# - <services/service.hpp> for all service types
+# No individual header listing needed.
 
 set(LIBRARY_SOURCES
 	src/libs/pugixml.cpp
 )
 
-add_executable(gameserver ${GAMESERVER_SOURCES} ${GAMESERVER_HEADERS} ${LIBRARY_SOURCES})
+add_executable(gameserver ${GAMESERVER_SOURCES} ${LIBRARY_SOURCES})
 
 # Include directories
 target_include_directories(gameserver PRIVATE 
@@ -146,7 +110,7 @@ enable_testing()
 # Add test executable
 add_executable(gameserver_tests
 	tests/tests.cpp
-	src/systems/data_loader.cpp
+	src/systems/util/data_loader.cpp
 	src/libs/pugixml.cpp
 )
 

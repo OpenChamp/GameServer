@@ -1,7 +1,7 @@
-#include "network_service.hpp"
+#include <services/network_service.hpp>
 
-#include "systems/math.hpp"
-#include "libs/log.hpp"
+#include <libs/math.hpp>
+#include <libs/log.hpp>
 
 struct NetworkService::NetworkBackend {
     NetworkBackend() {

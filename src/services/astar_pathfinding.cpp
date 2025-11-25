@@ -1,5 +1,5 @@
 #include <services/astar_pathfinding.hpp>
-#include <log.hpp>
+#include <libs/log.hpp>
 
 std::vector<Vec2> AStarPathfinder::FindPath(
     const Vec2& start_pos,

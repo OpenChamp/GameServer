@@ -6,21 +6,25 @@
 #include <memory>
 #include <atomic>
 #include <chrono>
-#include "components/errors.hpp"
-#include "components/game_state.hpp"
-#include "components/map.hpp"
-#include "libs/frame_timer.h"
 
-// Managers
-#include "player_manager.hpp"
-#include "packet_handler.hpp"
-#include "gameplay_coordinator.hpp"
+// Components
+#include <components/engine_errors.hpp>
+#include <components/game_state.hpp>
+#include <components/map.hpp>
+
+// Libraries
+#include <libs/frame_timer.h>
+
 // Systems
-#include "entity_manager.hpp"
+#include <systems/util/player_manager.hpp>
+#include <systems/util/packet_handler.hpp>
+#include <systems/gameplay_coordinator.hpp>
+// Systems
+#include <systems/entity_manager.hpp>
 // Services
-#include "services/navigation_service.hpp"
-#include "services/network_service.hpp"
-#include "services/visualizer_service.hpp"
+#include <services/navigation_service.hpp>
+#include <services/network_service.hpp>
+#include <services/visualizer_service.hpp>
 /**
  * Central GameServer class encapsulating all server state and logic.
  * Replaces global state management with proper OOP encapsulation.

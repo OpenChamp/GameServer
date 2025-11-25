@@ -1,9 +1,12 @@
-#include "attack_execution_system.hpp"
-#include "components/auto_attack.hpp"
-#include "components/entity_state.hpp"
-#include "serialization_system.hpp"
-#include "services/network_service.hpp"
-#include <log.hpp>
+#include <systems/core/attack_execution_system.hpp>
+#include <systems/util/serialization_system.hpp>
+
+#include <libs/log.hpp>
+
+#include <components/auto_attack.hpp>
+#include <components/entity_state.hpp>
+
+#include <services/network_service.hpp>
 
 void AttackExecutionSystem::update(const SystemContext& ctx) {
     if (!combat_system_) {

@@ -1,12 +1,12 @@
-#include "movement_system.hpp"
-#include "collision_system.hpp"
-#include "entity_manager.hpp"
-#include "services/navigation_service.hpp"
+#include <systems/core/movement_system.hpp>
+#include <systems/core/collision_system.hpp>
+#include <systems/entity_manager.hpp>
+#include <services/navigation_service.hpp>
 #include <components/pathfinding.hpp>
 #include <components/stats.hpp>
 #include <components/entity_state.hpp>
 #include <components/auto_attack.hpp>
-#include <log.hpp>
+#include <libs/log.hpp>
 #include <cmath>
 
 // ============================================================================

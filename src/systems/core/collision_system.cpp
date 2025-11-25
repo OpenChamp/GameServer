@@ -1,7 +1,7 @@
-#include "collision_system.hpp"
-#include "entity_manager.hpp"
-#include "components/movement.hpp"
-#include <log.hpp>
+#include <systems/core/collision_system.hpp>
+#include <systems/entity_manager.hpp>
+#include <components/movement.hpp>
+#include <libs/log.hpp>
 #include <cmath>
 
 void CollisionSystem::update(const SystemContext& ctx) {

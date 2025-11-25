@@ -1,9 +1,9 @@
-#include "player_manager.hpp"
-#include "components/client_info.hpp"
-#include "components/readiness.hpp"
-#include "components/network_metadata.hpp"
-#include "components/player_owned.hpp"
-#include <log.hpp>
+#include <systems/util/player_manager.hpp>
+#include <components/client_info.hpp>
+#include <components/readiness.hpp>
+#include <components/network_metadata.hpp>
+#include <components/player_owned.hpp>
+#include <libs/log.hpp>
 
 EntityID PlayerManager::on_client_connect(const std::string& client_id, EntityManager& entity_manager) {
     // Check if already connected

@@ -1,11 +1,11 @@
-#include "spawning_system.hpp"
-#include "components/movement.hpp"
-#include "components/stats.hpp"
-#include "components/network_entity.hpp"
-#include "components/entity_state.hpp"
-#include "serialization_system.hpp"
-#include "services/network_service.hpp"
-#include <log.hpp>
+#include <systems/core/spawning_system.hpp>
+#include <components/movement.hpp>
+#include <components/stats.hpp>
+#include <components/network_entity.hpp>
+#include <components/entity_state.hpp>
+#include <systems/util/serialization_system.hpp>
+#include <services/network_service.hpp>
+#include <libs/log.hpp>
 
 EntityID SpawningSystem::spawn_entity_from_template(const SystemContext& ctx,
                                                     const std::string& template_id,

@@ -6,7 +6,7 @@
 #include <stdexcept>
 
 /* Project Headers */
-#include "gameserver.hpp"
+#include <systems/gameserver.hpp>
 
 // === Configuration Constants ===
 constexpr int DEFAULT_PORT = 7000;

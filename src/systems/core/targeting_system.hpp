@@ -1,10 +1,10 @@
 #pragma once
 
-#include "entity_manager.hpp"
-#include "components/auto_attack.hpp"
-#include "components/movement.hpp"
-#include "components/stats.hpp"
-#include "systems/math.hpp"
+#include <systems/entity_manager.hpp>
+#include <components/auto_attack.hpp>
+#include <components/movement.hpp>
+#include <components/stats.hpp>
+#include <libs/math.hpp>
 #include <vector>
 #include <memory>
 

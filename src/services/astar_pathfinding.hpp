@@ -9,7 +9,7 @@
 #include <optional>
 #include <cstdint>
 
-#include <systems/math.hpp>
+#include <libs/math.hpp>
 
 /**
  * A* Pathfinding for 2D polygon-based navmeshes.

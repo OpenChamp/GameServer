@@ -1,9 +1,9 @@
-#include <systems/data_loader.hpp>
+#include <systems/util/data_loader.hpp>
 
 #include <filesystem>
 
 #include <libs/pugixml.hpp>
-#include <component_registry.hpp>
+#include <components/component_registry.hpp>
 #include <components/stats.hpp>
 #include <components/network_entity.hpp>
 #include <components/entity_state.hpp>

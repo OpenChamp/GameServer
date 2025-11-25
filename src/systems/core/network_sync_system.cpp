@@ -1,10 +1,10 @@
-#include "network_sync_system.hpp"
-#include "serialization_system.hpp"
-#include "components/movement.hpp"
-#include "components/entity_state.hpp"
-#include "components/network_entity.hpp"
-#include "components/stats.hpp"
-#include <log.hpp>
+#include <systems/core/network_sync_system.hpp>
+#include <systems/util/serialization_system.hpp>
+#include <components/movement.hpp>
+#include <components/entity_state.hpp>
+#include <components/network_entity.hpp>
+#include <components/stats.hpp>
+#include <libs/log.hpp>
 #include <sstream>
 #include <iomanip>
 

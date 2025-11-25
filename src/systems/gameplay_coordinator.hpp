@@ -1,14 +1,23 @@
 #pragma once
 
 #include "system_context.hpp"
-#include "input_system.hpp"
-#include "collision_system.hpp"
-#include "wave_system.hpp"
-#include "movement_system.hpp"
-#include "network_sync_system.hpp"
-#include "auto_attack_system.hpp"
-#include "attack_execution_system.hpp"
-#include "npc_system.hpp"
+
+/* === Core Systems === */
+// Input
+#include <systems/core/input_system.hpp>
+#include <systems/core/npc_system.hpp>
+
+// Physics & Movement
+#include <systems/core/collision_system.hpp>
+#include <systems/core/movement_system.hpp>
+
+// Combat
+#include <systems/core/auto_attack_system.hpp>
+#include <systems/core/attack_execution_system.hpp>
+
+// Networking
+#include <systems/core/network_sync_system.hpp>
+
 
 /**
  * GameplayCoordinator - Orchestrates all game systems

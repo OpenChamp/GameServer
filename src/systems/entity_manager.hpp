@@ -4,10 +4,11 @@
 #include <memory>
 #include <unordered_map>
 #include <vector>
+// Components
+#include <components/component.hpp>
+#include <components/template.hpp>
+#include <components/movement.hpp>
 
-#include "components/component.hpp"
-#include "components/template.hpp"
-#include "components/movement.hpp"
 #include <systems/util/data_loader.hpp>
 
 /**

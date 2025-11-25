@@ -1,8 +1,7 @@
-#include "gameserver.hpp"
-#include "packet_validator.hpp"
-#include "system_context.hpp"
+#include <systems/gameserver.hpp>
+#include <systems/system_context.hpp>
 #include <optional>
-#include <log.hpp>
+#include <libs/log.hpp>
 #include <cstring>
 #include <algorithm>
 #include <cstdio>
@@ -11,8 +10,9 @@
 
 #include <components/movement.hpp>
 
-#include <systems/wave_system.hpp>
-#include <systems/map_system.hpp>
+#include <systems/core/wave_system.hpp>
+#include <systems/util/map_system.hpp>
+#include <systems/util/packet_validator.hpp>
 
 GameServer::GameServer(int port, int max_clients, const std::string& map_path)
     : max_clients_(max_clients)

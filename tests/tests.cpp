@@ -8,11 +8,11 @@
 #include <thread>
 #include <chrono>
 
-#include "../src/systems/entity_manager.hpp"
-#include "../src/components/movement.hpp"
-#include "../src/components/stats.hpp"
-#include "../src/systems/packet_validator.hpp"
-#include "../src/entities/player.hpp"
+#include <systems/entity_manager.hpp>
+#include <components/movement.hpp>
+#include <components/stats.hpp>
+#include <systems/util/packet_validator.hpp>
+#include <entities/player.hpp>
 
 // Test utilities
 int tests_passed = 0;

@@ -4,7 +4,7 @@
 #include <map>
 #include <vector>
 #include <cstdint>
-#include "entity_manager.hpp"
+#include <systems/entity_manager.hpp>
 
 /**
  * PlayerManager - Manages all player entities and their lifecycle

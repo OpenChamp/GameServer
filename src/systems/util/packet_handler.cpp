@@ -1,13 +1,13 @@
-#include "packet_handler.hpp"
-#include "player_manager.hpp"
-#include "entity_manager.hpp"
-#include "input_system.hpp"
-#include "services/network_service.hpp"
-#include "systems/packet_validator.hpp"
-#include "components/readiness.hpp"
-#include "components/entity_state.hpp"
-#include "components/network_metadata.hpp"
-#include <log.hpp>
+#include <systems/util/packet_handler.hpp>
+#include <systems/util/player_manager.hpp>
+#include <systems/entity_manager.hpp>
+#include <systems/core/input_system.hpp>
+#include <services/network_service.hpp>
+#include <systems/util/packet_validator.hpp>
+#include <components/readiness.hpp>
+#include <components/entity_state.hpp>
+#include <components/network_metadata.hpp>
+#include <libs/log.hpp>
 
 PacketHandler::PacketHandler(PlayerManager* player_manager, 
                            EntityManager* entity_manager,

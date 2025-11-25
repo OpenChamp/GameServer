@@ -7,9 +7,9 @@
 
 #include <enet.h>
 
-#include <systems/math.hpp>
-#include <systems/packet_validator.hpp>
-#include "components/errors.hpp"
+#include <libs/math.hpp>
+#include <systems/util/packet_validator.hpp>
+#include <components/engine_errors.hpp>
 
 /**
  * Manages low level networking so that consumers can simply exchange packets

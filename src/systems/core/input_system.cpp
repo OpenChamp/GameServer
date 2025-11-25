@@ -1,10 +1,10 @@
-#include "input_system.hpp"
-#include "entity_manager.hpp"
-#include "components/entity_state.hpp"
-#include "components/movement.hpp"
-#include "components/pathfinding.hpp"
-#include "services/navigation_service.hpp"
-#include <log.hpp>
+#include <systems/core/input_system.hpp>
+#include <systems/entity_manager.hpp>
+#include <components/entity_state.hpp>
+#include <components/movement.hpp>
+#include <components/pathfinding.hpp>
+#include <services/navigation_service.hpp>
+#include <libs/log.hpp>
 
 void InputSystem::queue_movement_input(EntityID entity_id, const Vec2& target_position) {
     movement_inputs_.push({entity_id, target_position});

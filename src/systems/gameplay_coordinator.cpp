@@ -1,6 +1,6 @@
-#include "gameplay_coordinator.hpp"
+#include <systems/gameplay_coordinator.hpp>
 #include <algorithm>
-#include <log.hpp>
+#include <libs/log.hpp>
 
 GameplayCoordinator::GameplayCoordinator() 
     : wave_system_(nullptr) {
