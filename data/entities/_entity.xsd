@@ -34,6 +34,36 @@
                 </xs:complexType>
             </xs:element>
 
+            <!-- Auto-attack component enables AI entities to automatically search for and attack targets -->
+            <xs:element name="auto_attack" minOccurs="0" maxOccurs="1">
+                <xs:complexType>
+                    <xs:attribute name="enabled" type="xs:boolean" use="optional" />
+                    <xs:attribute name="aggressive" type="xs:boolean" use="optional" />
+                    <xs:attribute name="retaliate_only" type="xs:boolean" use="optional" />
+                    <xs:attribute name="aggression_range" type="xs:float" use="optional" />
+                    <xs:attribute name="retreat_range" type="xs:float" use="optional" />
+                    <xs:attribute name="personality" type="xs:string" use="optional" />
+                    <xs:attribute name="combat_timeout_ms" type="xs:float" use="optional" />
+                    <xs:attribute name="base_damage_multiplier" type="xs:float" use="optional" />
+                    <xs:attribute name="bonus_damage" type="xs:float" use="optional" />
+                    <xs:attribute name="attack_animation_duration_ms" type="xs:float" use="optional" />
+                    <xs:attribute name="hit_timing_percent" type="xs:float" use="optional" />
+                    <xs:attribute name="allow_kiting" type="xs:boolean" use="optional" />
+                </xs:complexType>
+            </xs:element>
+
+            <!-- Target component for tracking current attack target -->
+            <xs:element name="target" minOccurs="0" maxOccurs="1">
+                <xs:complexType>
+                    <xs:attribute name="targeting_mode" type="xs:string" use="optional" />
+                    <xs:attribute name="search_cooldown_ms" type="xs:float" use="optional" />
+                </xs:complexType>
+            </xs:element>
+
+            <!-- Attack component for tracking attack state and cooldowns -->
+            <xs:element name="attack" minOccurs="0" maxOccurs="1">
+            </xs:element>
+
             <!-- All unit stats, should probably be split up (HealthComponent, MovementComponent, LevelComponent) -->
             <xs:element name="stats" minOccurs="0" maxOccurs="1">
                 <xs:complexType>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<entity
+    xmlns="https://open-champ.com/mySchema"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="https://open-champ.com/mySchema ./entities/_entity.xsd"
+    id="player"
+>
+    <!-- Player entities don't need movement or stats - they're purely for client connection management -->
+    <!-- The champion entity (created separately) handles the actual player's character -->
+    <network />
+</entity>

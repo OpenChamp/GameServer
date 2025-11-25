@@ -11,12 +11,28 @@
         max_health="80"
         health="80"
         move_speed="4.0"
-        magical_power="10"
+        magic_power="10"
         armor="2"
         magic_resist="5"
         attack_range="5.5"
         attack_speed="0.8"
     />
     <pathfinding />
-    <npc type="minion" />
+    <npc
+        type="minion"
+        chase_distance="10.0"
+     />
+    <auto_attack
+        enabled="true"
+        aggressive="true"
+        retaliate_only="false"
+        aggression_range="10.0"
+        personality="BALANCED"
+        combat_timeout_ms="5000.0"
+        base_damage_multiplier="1.0"
+        attack_animation_duration_ms="300.0"
+        hit_timing_percent="0.5"
+    />
+    <target targeting_mode="NEAREST" />
+    <attack />
 </entity>
