@@ -131,6 +131,7 @@ bool NetworkSyncSystem::has_entity_changed(const Entity& entity, uint32_t curren
     
     auto* state = entity.get_component<EntityStateComponent>();
     auto* move = entity.get_component<Movement>();
+    auto* stats = entity.get_component<Stats>();
     
     // Always sync entities in MOVING state
     if (state && state->current_state == EntityState::MOVING) {
@@ -147,6 +148,11 @@ bool NetworkSyncSystem::has_entity_changed(const Entity& entity, uint32_t curren
         return true;
     }
     
+    // Check for stat changes (health, mana, level, etc.)
+    if (stats && net_comp->has_stats_changed(*stats)) {
+        return true;
+    }
+    
     // Force sync if requested
     if (net_comp->force_full_sync_next_frame) {
         return true;
@@ -155,11 +161,12 @@ bool NetworkSyncSystem::has_entity_changed(const Entity& entity, uint32_t curren
     // Debug: log why entity isn't changing (first 50 frames only)
     static uint32_t logged_frames = 0;
     if (logged_frames < 50 && state) {
-        LOG_INFO("Frame %u: Entity %u state=%d, sync_check: moving=%s, pos_changed=%s, state_changed=%s, force=%s",
+        LOG_INFO("Frame %u: Entity %u state=%d, sync_check: moving=%s, pos_changed=%s, state_changed=%s, stats_changed=%s, force=%s",
                  current_frame, entity.get_id(), (int)state->current_state,
                  (state->current_state == EntityState::MOVING) ? "yes" : "no",
                  move && net_comp->has_position_changed(move->position) ? "yes" : "no",
                  state && net_comp->has_state_changed(state->current_state) ? "yes" : "no",
+                 stats && net_comp->has_stats_changed(*stats) ? "yes" : "no",
                  net_comp->force_full_sync_next_frame ? "yes" : "no");
         logged_frames++;
     }
@@ -179,10 +186,10 @@ std::vector<std::vector<uint8_t>> NetworkSyncSystem::serialize_entity_update(Ent
     
     if (!move || !state) {
         if (!move) {
-            LOG_WARN("Entity %u missing Movement component", entity_id);
+            LOG_DEBUG("Entity %u missing Movement component", entity_id);
         }
         if (!state) {
-            LOG_WARN("Entity %u missing EntityStateComponent", entity_id);
+            LOG_DEBUG("Entity %u missing EntityStateComponent", entity_id);
         }
         return packets;  // Return empty vector
     }
@@ -209,6 +216,7 @@ std::vector<std::vector<uint8_t>> NetworkSyncSystem::serialize_entity_update(Ent
             std::ostringstream oss;
             oss << std::fixed << std::setprecision(6) << stats->health;
             packets.push_back(SerializationSystem::serialize_entity_stat_change(entity_id, "health", oss.str()));
+            LOG_DEBUG("Entity %u: Syncing health = %s", entity_id, oss.str().c_str());
             
             oss.str("");
             oss.clear();
@@ -229,8 +237,22 @@ std::vector<std::vector<uint8_t>> NetworkSyncSystem::serialize_entity_update(Ent
         } else if (net_comp->has_stats_changed(*stats)) {
             // Delta sync - only send packets for stats that changed
             auto stat_packets = create_stat_change_packets(entity_id, *stats, *net_comp->last_synced_stats);
+            if (!stat_packets.empty()) {
+                LOG_DEBUG("Entity %u: Syncing %zu stat changes (health: %.1f)", entity_id, stat_packets.size(), stats->health);
+            }
             packets.insert(packets.end(), stat_packets.begin(), stat_packets.end());
         }
+    }
+    
+    // ========================================================================
+    // Entity State Update Packet
+    // ========================================================================
+    if (send_full_state || !net_comp) {
+        // Full state sync - always send state
+        packets.push_back(SerializationSystem::serialize_entity_state(entity_id, static_cast<uint8_t>(state->current_state)));
+    } else if (net_comp->has_state_changed(state->current_state)) {
+        // Delta sync - only send state if it changed
+        packets.push_back(SerializationSystem::serialize_entity_state(entity_id, static_cast<uint8_t>(state->current_state)));
     }
     
     return packets;

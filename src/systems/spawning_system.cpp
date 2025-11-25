@@ -30,6 +30,8 @@ EntityID SpawningSystem::spawn_entity_from_template(const SystemContext& ctx,
     auto* stats = entity.get_component<Stats>();
     if (stats) {
         stats->team_id = team_id;
+        LOG_INFO("Spawned minion (ID %u) with health=%f, max_health=%f, team=%u", 
+                 entity_id, stats->health, stats->max_health, team_id);
     }
     
     // Add network entity component for syncing

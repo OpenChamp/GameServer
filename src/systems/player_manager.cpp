@@ -212,6 +212,12 @@ EntityID PlayerManager::create_player_entity(const std::string& client_id, Entit
     player_owned_comp->owning_player_id = player_id;
     champion_entity.add_component(std::move(player_owned_comp));
     
+    // Set champion team ID so minions don't target it (use 255 = neutral observer)
+    auto* champion_stats = champion_entity.get_component<Stats>();
+    if (champion_stats) {
+        champion_stats->team_id = 255;  // Neutral observer - not a valid combat target
+    }
+    
     LOG_INFO("Created player (ID %u) with champion (ID %u) for client %s",
              player_id, champion_id, client_id.c_str());
     
