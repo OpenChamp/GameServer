@@ -47,22 +47,31 @@ bool InputSystem::process_movement_input(Entity& entity, const Vec2& target_posi
         return false;
     }
     
-    // Validate target position is within map bounds
+    // Transform input coordinates from map space to entity space
+    // Input comes in as absolute map coordinates, needs to be adjusted to map-relative coordinates
+    Vec2 transformed_position = target_position;
     if (ctx.map) {
         float half_width = ctx.map->size.x / 2.0f;
         float half_height = ctx.map->size.y / 2.0f;
-        float min_x = ctx.map->offset.x - half_width;
+        
+        // Calculate map minimum (where the map starts)
+        float map_min_x = ctx.map->offset.x - half_width;
+        float map_min_y = ctx.map->offset.y - half_height;
+        
+        // Check bounds first
         float max_x = ctx.map->offset.x + half_width;
-        float min_y = ctx.map->offset.y - half_height;
         float max_y = ctx.map->offset.y + half_height;
         
-        if (target_position.x < min_x || target_position.x > max_x ||
-            target_position.y < min_y || target_position.y > max_y) {
+        if (target_position.x < map_min_x || target_position.x > max_x ||
+            target_position.y < map_min_y || target_position.y > max_y) {
             LOG_WARN("Entity %u movement target (%.2f, %.2f) is out of bounds [%.1f-%.1f, %.1f-%.1f]",
                      entity.get_id(), target_position.x, target_position.y,
-                     min_x, max_x, min_y, max_y);
+                     map_min_x, max_x, map_min_y, max_y);
             return false;
         }
+        
+        // Transform to centered coordinates (offset from map center)
+        transformed_position = target_position - ctx.map->offset;
     }
     
     // Attempt to use pathfinding if NavigationService and Map are available
@@ -78,7 +87,7 @@ bool InputSystem::process_movement_input(Entity& entity, const Vec2& target_posi
         PathRequest request;
         request.entity_id = entity.get_id();
         request.current_position = movement->position;
-        request.destination = target_position;
+        request.destination = transformed_position;
         request.entity_pathing_radius = 0.5f;
         
         if (ctx.navigation_service->MakeRequest(request)) {
@@ -87,7 +96,7 @@ bool InputSystem::process_movement_input(Entity& entity, const Vec2& target_posi
             ent_state->state_duration_ms = 0.0f;
             ent_state->target_positions.clear();
             
-            LOG_INFO("Entity %u requested pathfinding to (%.2f, %.2f)", entity.get_id(), target_position.x, target_position.y);
+            LOG_INFO("Entity %u requested pathfinding to (%.2f, %.2f)", entity.get_id(), transformed_position.x, transformed_position.y);
             return true;
         } else {
             LOG_WARN("Entity %u failed to request pathfinding", entity.get_id());
@@ -97,10 +106,10 @@ bool InputSystem::process_movement_input(Entity& entity, const Vec2& target_posi
     
     // Fallback: Use direct movement if pathfinding unavailable
     LOG_DEBUG("Entity %u using direct movement to (%.2f, %.2f) (pathfinding unavailable)", 
-             entity.get_id(), target_position.x, target_position.y);
+             entity.get_id(), transformed_position.x, transformed_position.y);
     ent_state->current_state = EntityState::MOVING;
     ent_state->target_positions.clear();
-    ent_state->target_positions.push_back(target_position);
+    ent_state->target_positions.push_back(transformed_position);
     
     return true;
 }
