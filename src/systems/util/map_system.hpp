@@ -78,6 +78,41 @@ public:
     static std::vector<uint8_t> serialize_map(Entity* map_entity);
 private:
     /**
+     * Structure to hold transformation matrix data.
+     */
+    struct TransformData {
+        float matrix[3][3];
+        Vec2 position;
+        bool has_rotation;
+    };
+    
+    /**
+     * Structure to hold map bounds information (min/max coordinates).
+     */
+    struct MapBounds {
+        Vec2 min;  // Minimum (x, y) coordinates
+        Vec2 max;  // Maximum (x, y) coordinates
+    };
+    
+    /**
+     * Extract the Transform3D from the NavigationRegion3D node and apply it to navmesh vertices.
+     * @param file_content The TSCN file content
+     * @param vertices The vertices to transform (modified in-place)
+     * @param spawnpoints The spawnpoints to transform (modified in-place)
+     */
+    static void apply_navigation_region_transform(const std::string& file_content, 
+                                                   std::vector<Vec2>& vertices,
+                                                   std::vector<Vec2>& spawnpoints);
+    
+    /**
+     * Parse a Transform3D matrix string from Godot format.
+     * Format: Transform3D(m00, m01, m02, m10, m11, m12, m20, m21, m22, x, y, z)
+     * @param transform_str The transform string to parse
+     * @return TransformData containing rotation matrix and position
+     */
+    static TransformData parse_transform_3d(const std::string& transform_str);
+    
+    /**
      * Parse a Godot tscn file and extract navmesh data.
      * Looks for NavigationMesh subsection with vertices and polygons.
      * @param file_content The contents of the tscn file
@@ -88,4 +123,5 @@ private:
     static std::vector<Vec2> parse_vertices_to_2D(const std::string& vertices_str);
     static std::vector<std::vector<uint32_t>> parse_polygons(const std::string& polygons_str);
     static Vec2 calculate_size_from_vertices(const std::vector<Vec2>& vertices);
+    static MapBounds calculate_bounds_from_vertices(const std::vector<Vec2>& vertices);
 };

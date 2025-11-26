@@ -9,6 +9,9 @@
 #include <cctype>
 #include <algorithm>
 #include <vector>
+#include <array>
+#include <tuple>
+#include <cmath>
 
 
 std::optional<Map> MapSystem::load_map(const std::optional<std::string>& file_path) {
@@ -83,6 +86,20 @@ std::optional<Map> MapSystem::load_map(const std::optional<std::string>& file_pa
     std::vector<SpawnPoint> spawnpoints = parse_spawnpoints_from_tscn(file_content);
     LOG_INFO("Parsed %zu spawnpoints from map file", spawnpoints.size());
     
+    // Extract spawnpoint positions for transformation
+    std::vector<Vec2> spawnpoint_positions;
+    for (const auto& sp : spawnpoints) {
+        spawnpoint_positions.push_back(sp.position);
+    }
+    
+    // Apply NavigationRegion3D transform to navmesh and spawnpoints
+    apply_navigation_region_transform(file_content, navmesh_data.vertices, spawnpoint_positions);
+    
+    // Update spawnpoints with transformed positions
+    for (size_t i = 0; i < spawnpoints.size() && i < spawnpoint_positions.size(); ++i) {
+        spawnpoints[i].position = spawnpoint_positions[i];
+    }
+    
     // Add Map component
     Map map;
     size_t final_slash_index = actual_file_path.find_last_of("/\\");
@@ -96,9 +113,12 @@ std::optional<Map> MapSystem::load_map(const std::optional<std::string>& file_pa
         map.spawnpoints.push_back(sp.position);
         LOG_INFO("  Spawnpoint: (%.1f, %.1f)", sp.position.x, sp.position.y);
     }
-    // Get 2d size and offset
-    map.size = MapSystem::calculate_size_from_vertices(navmesh_data.vertices);
-    map.offset = map.size / 2.0f;
+    
+    // Calculate map bounds and derived size/offset
+    MapBounds bounds = MapSystem::calculate_bounds_from_vertices(navmesh_data.vertices);
+    map.size = Vec2(bounds.max.x - bounds.min.x, bounds.max.y - bounds.min.y);
+    // Offset is the center point between min and max
+    map.offset = Vec2((bounds.min.x + bounds.max.x) / 2.0f, (bounds.min.y + bounds.max.y) / 2.0f);
 
     LOG_INFO("Loaded map '%s' with %zu vertices, %zu polygons, and %zu spawnpoints",
              map.name.c_str(), navmesh_data.vertices.size(), navmesh_data.polygons.size(), spawnpoints.size());
@@ -451,4 +471,192 @@ Vec2 MapSystem::calculate_size_from_vertices(const std::vector<Vec2>& vertices) 
     }
     
     return Vec2(max_x - min_x, max_y - min_y);
+}
+
+MapSystem::MapBounds MapSystem::calculate_bounds_from_vertices(const std::vector<Vec2>& vertices) {
+    MapBounds bounds;
+    
+    if (vertices.empty()) {
+        bounds.min = Vec2(0.0f, 0.0f);
+        bounds.max = Vec2(0.0f, 0.0f);
+        return bounds;
+    }
+    
+    bounds.min.x = vertices[0].x;
+    bounds.max.x = vertices[0].x;
+    bounds.min.y = vertices[0].y;
+    bounds.max.y = vertices[0].y;
+    
+    for (const auto& v : vertices) {
+        bounds.min.x = std::min(bounds.min.x, v.x);
+        bounds.max.x = std::max(bounds.max.x, v.x);
+        bounds.min.y = std::min(bounds.min.y, v.y);
+        bounds.max.y = std::max(bounds.max.y, v.y);
+    }
+    
+    return bounds;
+}
+
+MapSystem::TransformData 
+MapSystem::parse_transform_3d(const std::string& transform_str) {
+    // Format: Transform3D(m00, m01, m02, m10, m11, m12, m20, m21, m22, x, y, z)
+    MapSystem::TransformData data;
+    data.has_rotation = false;
+    data.position.x = 0.0f;
+    data.position.y = 0.0f;
+    
+    // Initialize matrix to identity
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            data.matrix[i][j] = (i == j) ? 1.0f : 0.0f;
+        }
+    }
+    
+    std::vector<float> values;
+    size_t pos = 0;
+    
+    // Parse all 12 floats from the transform string
+    while (pos < transform_str.length() && values.size() < 12) {
+        // Skip whitespace and commas
+        while (pos < transform_str.length() && (std::isspace(transform_str[pos]) || transform_str[pos] == ',')) {
+            pos++;
+        }
+        
+        if (pos >= transform_str.length()) break;
+        
+        // Parse number
+        size_t start = pos;
+        if (transform_str[pos] == '-') pos++;
+        
+        // Parse digits and decimal point
+        while (pos < transform_str.length() && (std::isdigit(transform_str[pos]) || transform_str[pos] == '.')) {
+            pos++;
+        }
+        
+        // Handle scientific notation (e or E)
+        if (pos < transform_str.length() && (transform_str[pos] == 'e' || transform_str[pos] == 'E')) {
+            pos++;
+            // Handle optional sign after e
+            if (pos < transform_str.length() && (transform_str[pos] == '+' || transform_str[pos] == '-')) {
+                pos++;
+            }
+            // Parse exponent digits
+            while (pos < transform_str.length() && std::isdigit(transform_str[pos])) {
+                pos++;
+            }
+        }
+        
+        if (pos > start) {
+            try {
+                values.push_back(std::stof(transform_str.substr(start, pos - start)));
+            } catch (...) {
+                LOG_WARN("Failed to parse transform value from '%s'", transform_str.substr(start, pos - start).c_str());
+            }
+        }
+    }
+    
+    if (values.size() >= 12) {
+        // Extract 3x3 rotation matrix
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++) {
+                data.matrix[i][j] = values[i * 3 + j];
+            }
+        }
+        
+        // Extract position (last 3 values)
+        data.position.x = values[9];
+        data.position.y = values[11];  // z coordinate becomes y
+        
+        // Check if there's any significant rotation (check if matrix is not identity)
+        const float eps = 0.0001f;
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++) {
+                float expected = (i == j) ? 1.0f : 0.0f;
+                if (std::abs(data.matrix[i][j] - expected) > eps) {
+                    data.has_rotation = true;
+                    break;
+                }
+            }
+            if (data.has_rotation) break;
+        }
+        
+        if (data.has_rotation) {
+            LOG_INFO("Detected rotation in NavigationRegion3D: matrix=[[%.4f,%.4f,%.4f],[%.4f,%.4f,%.4f],[%.4f,%.4f,%.4f]]",
+                     data.matrix[0][0], data.matrix[0][1], data.matrix[0][2],
+                     data.matrix[1][0], data.matrix[1][1], data.matrix[1][2],
+                     data.matrix[2][0], data.matrix[2][1], data.matrix[2][2]);
+        }
+    } else {
+        LOG_WARN("Failed to parse Transform3D - expected 12 values, got %zu", values.size());
+    }
+    
+    return data;
+}
+
+void MapSystem::apply_navigation_region_transform(const std::string& file_content, 
+                                                   std::vector<Vec2>& vertices,
+                                                   std::vector<Vec2>& spawnpoints) {
+    // Find the NavigationRegion3D node and extract its transform
+    size_t nav_region_pos = file_content.find("[node name=\"");
+    if (nav_region_pos == std::string::npos) {
+        LOG_WARN("No node found in tscn file");
+        return;
+    }
+    
+    // Find the first node's transform line (should be the root NavigationRegion3D)
+    size_t transform_pos = file_content.find("transform = Transform3D(", nav_region_pos);
+    if (transform_pos == std::string::npos) {
+        LOG_DEBUG("No transform found on NavigationRegion3D node (using default identity)");
+        return;
+    }
+    
+    // Extract transform string
+    transform_pos += std::string("transform = Transform3D(").length();
+    size_t transform_end = file_content.find(")", transform_pos);
+    if (transform_end == std::string::npos) {
+        LOG_WARN("Failed to find end of Transform3D string");
+        return;
+    }
+    
+    std::string transform_str = file_content.substr(transform_pos, transform_end - transform_pos);
+    MapSystem::TransformData transform_data = parse_transform_3d(transform_str);
+    
+    if (!transform_data.has_rotation) {
+        LOG_DEBUG("NavigationRegion3D has identity rotation (no transformation needed)");
+        return;
+    }
+    
+    // Apply rotation to vertices
+    // Transform is 3D: (X, Y, Z) -> applying 2D projection
+    // Godot uses X-right, Y-up, Z-back coordinate system
+    // We extract X and Z (converting Z to Y in 2D)
+    for (auto& v : vertices) {
+        float x3d = v.x;
+        float z3d = v.y;  // Y in 2D is Z in 3D
+        float y3d = 0.0f; // Navmesh is flat on Y=0 plane
+        
+        // Apply rotation: result = matrix * [x, y, z]
+        float new_x = transform_data.matrix[0][0] * x3d + transform_data.matrix[0][1] * y3d + transform_data.matrix[0][2] * z3d;
+        float new_z = transform_data.matrix[2][0] * x3d + transform_data.matrix[2][1] * y3d + transform_data.matrix[2][2] * z3d;
+        
+        // Store back as 2D (X and Z become X and Y)
+        v.x = new_x;
+        v.y = new_z;
+    }
+    
+    // Apply rotation to spawnpoints
+    for (auto& sp : spawnpoints) {
+        float x3d = sp.x;
+        float z3d = sp.y;
+        float y3d = 0.0f; // Spawnpoints are on the ground plane
+        
+        float new_x = transform_data.matrix[0][0] * x3d + transform_data.matrix[0][1] * y3d + transform_data.matrix[0][2] * z3d;
+        float new_z = transform_data.matrix[2][0] * x3d + transform_data.matrix[2][1] * y3d + transform_data.matrix[2][2] * z3d;
+        
+        sp.x = new_x;
+        sp.y = new_z;
+    }
+    
+    LOG_INFO("Applied NavigationRegion3D transform to %zu vertices and %zu spawnpoints", 
+             vertices.size(), spawnpoints.size());
 }
