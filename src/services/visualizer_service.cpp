@@ -39,14 +39,8 @@ static std::string entity_state_to_string(EntityState state) {
 static std::string intent_type_to_string(IntentType type) {
     switch (type) {
         case IntentType::NONE: return "NONE";
-        case IntentType::MOVE_TO_OBJECTIVE: return "MOVE_TO_OBJECTIVE";
         case IntentType::MOVE_TO_POSITION: return "MOVE_TO_POSITION";
-        case IntentType::MOVE_TO_SPAWNPOINT: return "MOVE_TO_SPAWNPOINT";
         case IntentType::ATTACK_TARGET: return "ATTACK_TARGET";
-        case IntentType::DEFEND_POSITION: return "DEFEND_POSITION";
-        case IntentType::CHASE_ENEMY: return "CHASE_ENEMY";
-        case IntentType::RETREAT: return "RETREAT";
-        case IntentType::PATROL: return "PATROL";
         default: return "UNKNOWN";
     }
 }

@@ -19,6 +19,7 @@ void GameplayCoordinator::update(const SystemContext& ctx) {
     
     // INPUT & AI SYSTEMS
     input_system_.update(ctx);
+    npc_system_.update(ctx);
     brain_system_.update(ctx);  // Process NPC intents
     
     // ENGINE SYSTEMS

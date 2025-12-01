@@ -1,7 +1,6 @@
 #include <systems/util/targeting_utility.hpp>
 #include <components/movement.hpp>
 #include <components/stats.hpp>
-#include <components/auto_attack.hpp>
 #include <libs/log.hpp>
 #include <cmath>
 #include <algorithm>

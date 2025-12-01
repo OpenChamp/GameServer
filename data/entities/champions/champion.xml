@@ -22,4 +22,5 @@
     <pathfinding />
     <network />
     <state />
+    <intent />
 </entity>

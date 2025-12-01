@@ -8,7 +8,6 @@
 #include <components/network_entity.hpp>
 #include <components/entity_state.hpp>
 #include <components/npc_component.hpp>
-#include <components/auto_attack.hpp>
 #include <components/target.hpp>
 #include <components/attack.hpp>
 #include <components/intent.hpp>
@@ -42,63 +41,15 @@ static NPCType string_to_npc_type(const std::string& str) {
 }
 
 /**
- * Convert string to AIPersonality enum.
- * @param str The string to convert (case-insensitive)
- * @return AIPersonality enum value, defaults to BALANCED if unrecognized
- */
-static NPCComponent::AIPersonality string_to_ai_personality(const std::string& str) {
-    if (str == "passive") {
-        return NPCComponent::AIPersonality::PASSIVE;
-    } else if (str == "defensive") {
-        return NPCComponent::AIPersonality::DEFENSIVE;
-    } else if (str == "aggressive") {
-        return NPCComponent::AIPersonality::AGGRESSIVE;
-    } else if (str == "zealous") {
-        return NPCComponent::AIPersonality::ZEALOUS;
-    }
-    // Default to BALANCED for unrecognized or empty strings
-    return NPCComponent::AIPersonality::BALANCED;
-}
-
-/**
- * Convert string to TargetPriority enum.
- * @param str The string to convert (case-insensitive)
- * @return TargetPriority enum value, defaults to NEAREST if unrecognized
- */
-static TargetComponent::TargetPriority string_to_target_priority(const std::string& str) {
-    if (str == "lowest_health") {
-        return TargetComponent::TargetPriority::LOWEST_HEALTH;
-    } else if (str == "highest_threat") {
-        return TargetComponent::TargetPriority::HIGHEST_THREAT;
-    } else if (str == "highest_damage") {
-        return TargetComponent::TargetPriority::HIGHEST_DAMAGE;
-    }
-    // Default to NEAREST for unrecognized or empty strings
-    return TargetComponent::TargetPriority::NEAREST;
-}
-
-/**
  * Convert string to IntentType enum.
  * @param str The string to convert (case-insensitive)
  * @return IntentType enum value, defaults to NONE if unrecognized
  */
 static IntentType string_to_intent_type(const std::string& str) {
-    if (str == "move_to_objective") {
-        return IntentType::MOVE_TO_OBJECTIVE;
-    } else if (str == "move_to_position") {
+    if (str == "move_to_position") {
         return IntentType::MOVE_TO_POSITION;
-    } else if (str == "move_to_spawnpoint") {
-        return IntentType::MOVE_TO_SPAWNPOINT;
     } else if (str == "attack_target") {
         return IntentType::ATTACK_TARGET;
-    } else if (str == "defend_position") {
-        return IntentType::DEFEND_POSITION;
-    } else if (str == "chase_enemy") {
-        return IntentType::CHASE_ENEMY;
-    } else if (str == "retreat") {
-        return IntentType::RETREAT;
-    } else if (str == "patrol") {
-        return IntentType::PATROL;
     }
     // Default to NONE for unrecognized or empty strings
     return IntentType::NONE;
@@ -191,32 +142,14 @@ EntityTemplate DataLoader::load_entity_template(std::string file_name) {
     if(!npc_node.empty()) {
         std::shared_ptr<NPCComponent> npc = std::make_shared<NPCComponent>();
         LOAD_ENUM_ATTRIBUTE(npc_node, npc, npc_type, string_to_npc_type)
-        LOAD_ATTRIBUTE(npc_node, npc, aggressive, bool)
-        LOAD_ATTRIBUTE(npc_node, npc, retaliate_only, bool)
         LOAD_ATTRIBUTE(npc_node, npc, aggression_range, float)
-        LOAD_ATTRIBUTE(npc_node, npc, retreat_range, float)
-        LOAD_ENUM_ATTRIBUTE(npc_node, npc, personality, string_to_ai_personality)
         LOAD_ATTRIBUTE(npc_node, npc, chase_distance, float)
         temp.component_templates.push_back(npc);
-    }
-
-    pugi::xml_node auto_attack_node = rootNode.child("auto_attack");
-    if(!auto_attack_node.empty()) {
-        std::shared_ptr<AutoAttackComponent> auto_attack = std::make_shared<AutoAttackComponent>();
-        LOAD_ATTRIBUTE(auto_attack_node, auto_attack, enabled, bool)
-        LOAD_ATTRIBUTE(auto_attack_node, auto_attack, combat_timeout_ms, float)
-        LOAD_ATTRIBUTE(auto_attack_node, auto_attack, base_damage_multiplier, float)
-        LOAD_ATTRIBUTE(auto_attack_node, auto_attack, bonus_damage, float)
-        LOAD_ENUM_ATTRIBUTE(auto_attack_node, auto_attack, damage_type, string_to_damage_type)
-        LOAD_ATTRIBUTE(auto_attack_node, auto_attack, attack_animation_duration_ms, float)
-        LOAD_ATTRIBUTE(auto_attack_node, auto_attack, hit_timing_percent, float)
-        temp.component_templates.push_back(auto_attack);
     }
 
     pugi::xml_node target_node = rootNode.child("target");
     if(!target_node.empty()) {
         std::shared_ptr<TargetComponent> target = std::make_shared<TargetComponent>();
-        LOAD_ENUM_ATTRIBUTE(target_node, target, targeting_mode, string_to_target_priority)
         LOAD_ATTRIBUTE(target_node, target, target_search_interval_ms, float)
         temp.component_templates.push_back(target);
     }
@@ -278,29 +211,6 @@ EntityTemplate DataLoader::load_entity_template(std::string file_name) {
             
             // Load optional intent parameters
             LOAD_ENUM_ATTRIBUTE(intent_node, intent, type, string_to_intent_type)
-            LOAD_ENUM_ATTRIBUTE(intent_node, intent, priority, [](const std::string& s) {
-                if (s == "lowest") return IntentPriority::LOWEST;
-                if (s == "low") return IntentPriority::LOW;
-                if (s == "high") return IntentPriority::HIGH;
-                if (s == "critical") return IntentPriority::CRITICAL;
-                return IntentPriority::NORMAL;
-            })
-            LOAD_ATTRIBUTE(intent_node, intent, max_duration_ms, float)
-            LOAD_ATTRIBUTE(intent_node, intent, min_range, float)
-            LOAD_ATTRIBUTE(intent_node, intent, max_range, float)
-            LOAD_ATTRIBUTE(intent_node, intent, tolerance, float)
-            
-            // Load target_spawnpoint_id for MOVE_TO_OBJECTIVE and similar
-            pugi::xml_attribute target_sp = intent_node.attribute("target_spawnpoint_id");
-            if(!target_sp.empty()) {
-                intent->target_spawnpoint_id = target_sp.as_uint();
-            }
-            
-            // Load objective_index for lane progression
-            pugi::xml_attribute obj_idx = intent_node.attribute("objective_index");
-            if(!obj_idx.empty()) {
-                intent->objective_index = obj_idx.as_uint();
-            }
             
             LOG_DEBUG("Loaded Intent component: type=%d", static_cast<int>(intent->type));
         }

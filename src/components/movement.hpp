@@ -3,6 +3,7 @@
 #include <components/component.hpp>
 #include <libs/math.hpp>
 #include <vector>
+#include <optional>
 
 /**
  * Movement component for entities.
@@ -15,6 +16,9 @@ struct Movement : public Component {
     
     // Collision radius for entity-to-entity collision avoidance
     float collision_radius{0.5f}; 
+
+    // Position that the entity currently wants to move to
+    std::optional<Vec2> target = std::nullopt;
     
     COMPONENT_TYPE_ID(Movement, 2001)
 };

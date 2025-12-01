@@ -5,6 +5,7 @@
 #include <components/network_entity.hpp>
 #include <components/entity_state.hpp>
 #include <components/intent.hpp>
+#include <components/npc_component.hpp>
 #include <libs/log.hpp>
 
 EntityID SpawningSystem::spawn_entity_from_template(const SystemContext& ctx,
@@ -39,15 +40,15 @@ EntityID SpawningSystem::spawn_entity_from_template(const SystemContext& ctx,
         LOG_INFO("Spawned minion (ID %u) with health=%f, max_health=%f, team=%u", 
                  entity_id, stats->health, stats->max_health, team_id);
     }
-    
     // Adjust intent objective target based on team
     // Team 1 moves toward spawnpoint 1, Team 2 moves toward spawnpoint 0 (opposite direction)
-    auto* intent = entity.get_component<IntentComponent>();
-    if (intent && intent->type == IntentType::MOVE_TO_OBJECTIVE) {
-        intent->target_spawnpoint_id = (team_id == 1) ? 1 : 0;
-        LOG_DEBUG("Entity %u (team %u): Set objective target to spawnpoint %u", 
-                 entity_id, team_id, intent->target_spawnpoint_id);
+    auto* npc = entity.get_component<NPCComponent>();
+    if (npc && npc->npc_type == NPCType::MINION) {
+        npc->objective = (team_id == 1) ? Vec2(0, 28) : Vec2(0, -28);
+        LOG_DEBUG("Entity %u (team %u): Set objective target to <%f, %f>", 
+                 entity_id, team_id, npc->objective.x, npc->objective.y);
     }
+    
     
     // Add network entity component for syncing
     if (!entity.has_component<NetworkEntityComponent>()) {

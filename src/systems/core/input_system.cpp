@@ -3,6 +3,7 @@
 #include <components/entity_state.hpp>
 #include <components/movement.hpp>
 #include <components/pathfinding.hpp>
+#include <components/intent.hpp>
 #include <services/navigation_service.hpp>
 #include <libs/log.hpp>
 
@@ -36,7 +37,8 @@ void InputSystem::update(const SystemContext& ctx) {
 bool InputSystem::process_movement_input(Entity& entity, const Vec2& target_position, const SystemContext& ctx) {
     EntityStateComponent* ent_state = entity.get_component<EntityStateComponent>();
     Movement* movement = entity.get_component<Movement>();
-    
+    IntentComponent* intent = entity.get_component<IntentComponent>();
+
     if (!ent_state) {
         LOG_WARN("Entity %u missing EntityStateComponent", entity.get_id());
         return false;
@@ -74,42 +76,9 @@ bool InputSystem::process_movement_input(Entity& entity, const Vec2& target_posi
         transformed_position = target_position - ctx.map->offset;
     }
     
-    // Attempt to use pathfinding if NavigationService and Map are available
-    if (ctx.navigation_service && ctx.map) {
-        // Ensure entity has PathfindingComponent
-        PathfindingComponent* pathfinding = entity.get_component<PathfindingComponent>();
-        if (!pathfinding) {
-            auto pf = std::make_unique<PathfindingComponent>();
-            entity.add_component(std::move(pf));
-            pathfinding = entity.get_component<PathfindingComponent>();
-        }
-        
-        PathRequest request;
-        request.entity_id = entity.get_id();
-        request.current_position = movement->position;
-        request.destination = transformed_position;
-        request.entity_pathing_radius = 0.5f;
-        
-        if (ctx.navigation_service->MakeRequest(request)) {
-            // Transition to pathfinding state
-            ent_state->current_state = EntityState::PATHFINDING_WAITING;
-            ent_state->state_duration_ms = 0.0f;
-            ent_state->target_positions.clear();
-            
-            LOG_INFO("Entity %u requested pathfinding to (%.2f, %.2f)", entity.get_id(), transformed_position.x, transformed_position.y);
-            return true;
-        } else {
-            LOG_WARN("Entity %u failed to request pathfinding", entity.get_id());
-            // Fall through to direct movement as fallback
-        }
-    }
-    
-    // Fallback: Use direct movement if pathfinding unavailable
-    LOG_DEBUG("Entity %u using direct movement to (%.2f, %.2f) (pathfinding unavailable)", 
-             entity.get_id(), transformed_position.x, transformed_position.y);
-    ent_state->current_state = EntityState::MOVING;
-    ent_state->target_positions.clear();
-    ent_state->target_positions.push_back(transformed_position);
+
+    intent->type = IntentType::MOVE_TO_POSITION;
+    intent->target_position = transformed_position;
     
     return true;
 }

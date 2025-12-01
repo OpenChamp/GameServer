@@ -4,21 +4,18 @@
 #include <components/intent.hpp>
 #include <components/entity_state.hpp>
 #include <components/stats.hpp>
-#include <components/auto_attack.hpp>
 
 /**
- * BrainSystem - NPC decision-making and intent management
+ * BrainSystem - Intent management
  * 
  * RESPONSIBILITIES:
- *   - Read IntentComponent to understand what the NPC wants to do
+ *   - Read IntentComponent to understand what the entity wants to do
  *   - Translate high-level intents into low-level component state
- *   - Manage target acquisition based on intents
- *   - Handle cooldowns and combat timeouts
  *   - Set up CombatComponent and MovementComponent based on intents
  * 
  * ARCHITECTURE:
  *   This system implements the Intent-based architecture:
- *   - IntentComponent = What the NPC thinks it should do (ATTACK_TARGET, MOVE_TO_POSITION, etc.)
+ *   - InputSystem/NPCSystem = What the entity thinks it should do (ATTACK_TARGET, MOVE_TO_POSITION, etc.)
  *   - BrainSystem = How to translate intent into lower-level components
  *   - CombatSystem = Reads CombatComponent and executes combat logic
  *   - MovementSystem = Reads MovementComponent and executes movement
@@ -39,7 +36,6 @@
  *   - Runs early in the loop (like NPC input)
  *   - Reads: IntentComponent, Stats, Movement, EntityStateComponent, CombatComponent
  *   - Writes: CombatComponent, MovementComponent, EntityStateComponent
- *   - Read by: CombatSystem, MovementSystem
  */
 class BrainSystem {
 public:
@@ -72,39 +68,17 @@ private:
     void process_entity_intent(const SystemContext& ctx, Entity* entity);
 
     /**
-     * Update minion AI intent (LoL-style minion behavior).
-     * Handles target acquisition and movement to objective.
+     * Process a single entity's attack intent.
      * 
      * @param ctx System context
-     * @param entity Minion entity
-     * @param intent IntentComponent to update
-     * @param stats Stats component
-     * @param entity_state EntityStateComponent to update
-     * @param auto_attack AutoAttackComponent with aggression range
+     * @param entity Entity with IntentComponent that intends to attack
      */
-    void update_minion_intent(const SystemContext& ctx, Entity* entity, IntentComponent& intent,
-                             Stats& stats, EntityStateComponent& entity_state, 
-                             AutoAttackComponent& auto_attack);
+    void handle_attack_intent(const SystemContext& ctx, Entity* entity);
 
     /**
-     * Handle generic intent for non-minion entities.
-     * Ensures entity state reflects current intent.
+     * Process a single entity's move intent.
      * 
      * @param ctx System context
-     * @param entity Entity to update
-     * @param intent IntentComponent
-     * @param entity_state EntityStateComponent to update
+     * @param entity Entity with intends to move
      */
-    void handle_generic_intent(const SystemContext& ctx, Entity* entity, 
-                              IntentComponent& intent, EntityStateComponent& entity_state);
-
-    /**
-     * Get the distance from entity to target.
-     * 
-     * @param attacker Entity doing the attacking
-     * @param target_id ID of target entity
-     * @param ctx System context
-     * @return Distance in units, or -1 if target not found
-     */
-    float get_distance_to_target(const Entity* attacker, uint32_t target_id, const SystemContext& ctx) const;
-};
+    void handle_move_intent(const SystemContext& ctx, Entity* entity);};

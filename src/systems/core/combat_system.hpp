@@ -5,7 +5,6 @@
 #include <systems/util/combat_calculator.hpp>
 #include <systems/util/targeting_utility.hpp>
 #include <components/attack.hpp>
-#include <components/auto_attack.hpp>
 #include <components/npc_component.hpp>
 #include <components/target.hpp>
 
@@ -13,26 +12,16 @@
  * CombatSystem - Unified combat management system
  * 
  * RESPONSIBILITIES:
- *   - Auto-attack AI and target acquisition
  *   - Attack cooldown and readiness tracking
  *   - Combat timeout management
- *   - Target validation and prioritization
  *   - Attack animation management
  *   - Attack execution and damage application
  *   - Coordinate between auto-attack logic and damage calculation
  * 
- * REPLACES:
- *   - AutoAttackSystem (auto-attack AI and cooldowns)
- *   - AttackExecutionSystem (attack animation and execution)
- *   This unified system handles all aspects of combat from AI to execution
- * 
  * COMPONENTS USED:
- *   - AutoAttackComponent (AI behavior settings)
  *   - AttackComponent (attack state and cooldown)
- *   - TargetComponent (target tracking)
  *   - Stats (attack speed, health, damage stats)
  *   - Movement (position for range calculations)
- *   - EntityStateComponent (for state tracking)
  * 
  * UTILITIES USED:
  *   - TargetingUtility: Pure utility functions for targeting calculations and validation
@@ -44,7 +33,6 @@
  *   - Feeds attack information to entity state tracking
  * 
  * DATA-DRIVEN DESIGN:
- *   All combat behavior is configured through component properties.
  *   This system reads those properties and executes accordingly without hardcoded logic.
  *   Targeting behavior is entirely data-driven via AutoAttackComponent and Stats properties.
  */
@@ -68,17 +56,6 @@ private:
      * @param delta_time_ms Time since last frame in milliseconds
      */
     void update_auto_attack(const SystemContext& ctx, Entity& entity, float delta_time_ms);
-
-    /**
-     * Execute a pending attack for an entity.
-     * Processes attack animations and applies damage at the correct time.
-     * @param ctx System context
-     * @param entity Entity with attack in progress
-     * @param attack Attack component with pending data
-     * @param delta_time_ms Time elapsed this frame
-     * @return true if damage was applied this frame
-     */
-    void execute_attack(const SystemContext& ctx, Entity& entity, AttackComponent& attack, float delta_time_ms);
 
     /**
      * Check if a potential target is valid (not dead, correct team, etc).

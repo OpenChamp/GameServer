@@ -2,6 +2,7 @@
 
 #include "component.hpp"
 #include <cstdint>
+#include <optional>
 
 /**
  * AttackComponent - Tracks current attack state and cooldown (DATA ONLY)
@@ -20,6 +21,9 @@
  *   - Separates attack state from combat stats
  */
 struct AttackComponent : public Component {
+    // The entity that this component currently wants to target
+    std::optional<EntityID> target;
+
     // === Attack State ===
     bool can_attack = true;                         // Can attack this frame
     
@@ -28,6 +32,7 @@ struct AttackComponent : public Component {
     float cooldown_timer_ms = 0.0f;                // Tracks remaining cooldown time
     float cast_time_ms = 0.0f;                     // Time spent in current attack animation
     float last_attack_time_ms = 0.0f;              // Timestamp of last attack
+    float hit_timing_percent = 0.5f;                // When in animation does damage occur (0.0-1.0)
     
     // === Current Attack ===
     bool attack_in_progress = false;               // Currently executing attack animation/projectile

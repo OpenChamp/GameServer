@@ -14,35 +14,23 @@
 
 void CombatSystem::update(const SystemContext& ctx) {
     // Process all entities with auto-attack behavior
-    auto attacking_entities = ctx.entity_manager.get_entities_with_component<AutoAttackComponent>();
+    auto attacking_entities = ctx.entity_manager.get_entities_with_component<AttackComponent>();
     for (auto* entity : attacking_entities) {
         if (entity) {
             // Update auto-attack (target search, cooldown, attack initiation)
             update_auto_attack(ctx, *entity, ctx.delta_time_ms);
         }
     }
-
-    // Process all entities with pending attacks (execution phase)
-    attacking_entities = ctx.entity_manager.get_entities_with_component<AttackComponent>();
-    for (auto* entity : attacking_entities) {
-        if (entity) {
-            auto* attack = entity->get_component<AttackComponent>();
-            if (attack && attack->attack_in_progress) {
-                execute_attack(ctx, *entity, *attack, ctx.delta_time_ms);
-            }
-        }
-    }
 }
 
 void CombatSystem::update_auto_attack(const SystemContext& ctx, Entity& entity, float delta_time_ms) {
-    auto* auto_attack = entity.get_component<AutoAttackComponent>();
     auto* attack = entity.get_component<AttackComponent>();
     auto* target = entity.get_component<TargetComponent>();
     auto* stats = entity.get_component<Stats>();
     auto* entity_state = entity.get_component<EntityStateComponent>();
     auto* intent = entity.get_component<IntentComponent>();
     
-    if (!auto_attack || !attack || !target || !stats) {
+    if (!attack || !target || !stats) {
         return;  // Missing required components
     }
     
@@ -55,10 +43,7 @@ void CombatSystem::update_auto_attack(const SystemContext& ctx, Entity& entity, 
     }
     
     // Check if entity should initiate an attack
-    // Condition: In ATTACKING state, has ATTACK_TARGET intent, and attack is ready
-    if (entity_state && entity_state->current_state == EntityState::ATTACKING && 
-        intent && intent->type == IntentType::ATTACK_TARGET &&
-        attack->can_attack && !attack->attack_in_progress) {
+    if (attack-> target.has_value() && attack->can_attack && !attack->attack_in_progress) {
         
         // Get the target entity
         auto* target_entity = ctx.entity_manager.get_entity(intent->target_entity_id);
@@ -81,7 +66,7 @@ void CombatSystem::update_auto_attack(const SystemContext& ctx, Entity& entity, 
         }
     }
 
-    float hit_timing_percent = auto_attack ? auto_attack->hit_timing_percent : 0.5f;
+    float hit_timing_percent = attack ? attack->hit_timing_percent : 0.5f;
     float animation_duration = attack->attack_animation_duration_ms > 0.0f 
         ? attack->attack_animation_duration_ms 
         : 300.0f;
@@ -129,19 +114,15 @@ void CombatSystem::update_auto_attack(const SystemContext& ctx, Entity& entity, 
 
     // Check if animation is complete
     if (attack->attack_animation_progress >= 1.0f) {
-        attack->attack_animation_progress = 1.0f;
+        attack->attack_animation_progress = 0.0f;
         attack->attack_in_progress = false;
+        attack->can_attack = true;
         
         // Clear pending attack data
         attack->pending_damage = 0.0f;
         attack->pending_target = INVALID_ENTITY_ID;
         attack->pending_damage_type = DamageType::PHYSICAL;
     }
-}
-
-void CombatSystem::execute_attack(const SystemContext& ctx, Entity& entity, AttackComponent& attack, float delta_time_ms) {
-    // This method was consolidated into update_auto_attack
-    // Attack execution now happens in update_auto_attack where damage is applied at the correct animation timing
 }
 
 bool CombatSystem::is_dead(const Entity& entity) const {

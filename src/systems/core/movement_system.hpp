@@ -11,15 +11,16 @@
 #include <vector>
 
 /**
- * System to handle entity movement along pathfinding waypoints.
- * Updates positions based on movement speed and follows path waypoints.
- * Automatically requests new paths when reaching target spawnpoints.
+ * System to handle entity movement.
+ * Updates positions based on movement speed and follows path waypoints
+ * for pathfinding units.
  */
 class MovementSystem {
 public:
     /**
      * Update all moving entities.
-     * Moves entities toward their current waypoints and handles path progression.
+     * Moves pathfinding entities toward their current waypoints and handles path progression.
+     * Moves entites without pathfinding directly towards their target positions
      * @param ctx System context containing entity manager, navigation service, and map
      */
     void update(const SystemContext& ctx);
@@ -30,19 +31,9 @@ private:
     // ========================================================================
     
     /**
-     * Process pathfinding-related updates (results and retries).
-     */
-    void process_pathfinding_phase(const SystemContext& ctx);
-    
-    /**
      * Process completed pathfinding results from NavigationService.
      */
     static void process_completed_paths(const SystemContext& ctx);
-    
-    /**
-     * Retry pending pathfinding requests for stuck entities.
-     */
-    static void retry_stuck_entities(const SystemContext& ctx);
     
     // ========================================================================
     // Entity movement handlers
@@ -56,35 +47,19 @@ private:
     /**
      * Update direct movement (player movement to target positions).
      */
-    static void update_direct_movement(const SystemContext& ctx, Entity& entity, Movement& movement, Stats& stats, EntityStateComponent& state_comp);
-    
-    /**
-     * Update stuck detection and trigger repath if needed.
-     */
-    void update_stuck_detection(const SystemContext& ctx, Entity& entity, Movement& movement, PathfindingComponent& pathfinding, EntityStateComponent* entity_state);
-    
-    /**
-     * Update waypoint-based movement (minion path following).
-     */
-    static void update_waypoint_movement(const SystemContext& ctx, Entity& entity, Movement& movement, Stats& stats, PathfindingComponent& pathfinding, EntityStateComponent* entity_state);
-    
-    /**
-     * Request path to next spawnpoint when current waypoints exhausted.
-     */
-    static void request_path_to_next_spawnpoint(const SystemContext& ctx, Entity& entity, PathfindingComponent& pathfinding, EntityStateComponent* entity_state);
+    static void update_direct_movement(const SystemContext& ctx, Entity& entity, Movement& movement, Vec2 target, Stats& stats, EntityStateComponent& state_comp);
     
     // ========================================================================
     // Utility functions
     // ========================================================================
     
     /**
-     * Request a new path for an entity to a target spawnpoint.
+     * Request a new path for an entity to a target position.
      * @param entity The entity requesting a path
-     * @param target_spawnpoint_id Target spawnpoint index
+     * @param target Target position
      * @param navigation_service Navigation service to queue the request
-     * @param map Map containing spawnpoint information
      */
-    static void request_new_path(Entity& entity, uint32_t target_spawnpoint_id, NavigationService* navigation_service, const Map* map);
+    static void request_new_path(Entity& entity, Vec2 target, NavigationService* navigation_service);
     
     /**
      * Check for collision with other entities.

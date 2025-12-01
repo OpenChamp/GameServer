@@ -63,6 +63,7 @@ set(GAMESERVER_SOURCES
 	src/systems/core/input_system.cpp
 	src/systems/core/movement_system.cpp
 	src/systems/core/network_sync_system.cpp
+	src/systems/core/npc_system.cpp
 	src/systems/core/spawning_system.cpp
 	src/systems/core/wave_system.cpp
 	# Systems - Utilities

@@ -6,6 +6,7 @@
 // Input & AI
 #include <systems/core/input_system.hpp>
 #include <systems/core/brain_system.hpp>
+#include <systems/core/npc_system.hpp>
 
 // Spawning
 #include <systems/core/wave_system.hpp>
@@ -147,6 +148,7 @@ public:
 
 private:
     InputSystem input_system_;
+    NPCSystem npc_system_;
     std::unique_ptr<WaveSystem> wave_system_;
     BrainSystem brain_system_;
     CollisionSystem collision_system_;
