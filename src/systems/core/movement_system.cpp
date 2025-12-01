@@ -64,7 +64,7 @@ void MovementSystem::update_entity_movement(const SystemContext& ctx, Entity& en
     }
 
     // No path, or path to incorrect target
-    if(pathfinding->waypoints.empty() || pathfinding->waypoints[pathfinding->waypoints.size() - 1] != movement->target.value()) {
+    if(pathfinding->waypoints.empty() || (pathfinding->waypoints[pathfinding->waypoints.size() - 1] - movement->target.value()).length() > REPATH_DISTANCE) {
         request_new_path(entity, movement->target.value(), ctx.navigation_service);
         return;  // Path request submitted, will process next frame
     }

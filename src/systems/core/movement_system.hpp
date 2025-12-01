@@ -10,6 +10,10 @@
 #include "system_context.hpp"
 #include <vector>
 
+// Determines how far the end point of the current path may be
+// off the current movement target before recalculating the path
+#define REPATH_DISTANCE 1.0f
+
 /**
  * System to handle entity movement.
  * Updates positions based on movement speed and follows path waypoints
