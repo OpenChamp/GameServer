@@ -18,6 +18,21 @@
 class AStarPathfinder {
 public:
     /**
+     * Polygon grid data structure for spatial acceleration.
+     * This is pure data - no methods, just storage.
+     * Populated at map load time by MapSystem::build_polygon_grid().
+     */
+    struct NavGrid {
+        std::vector<std::vector<uint32_t>> grid_cells;  // grid_cells[y * grid_width + x] = {polygon_ids}
+        Vec2 grid_origin;                                // World position of grid origin (bottom-left)
+        float grid_cell_size = 50.0f;                    // Size of each grid cell in world units
+        int grid_width = 0;                              // Number of cells in X direction
+        int grid_height = 0;                             // Number of cells in Y direction
+
+        bool IsBuilt() const { return grid_width > 0 && grid_height > 0; }
+    };
+
+    /**
      * Find a path from start to goal in the navmesh.
      * 
      * @param start_pos Starting position (2D)
@@ -25,6 +40,7 @@ public:
      * @param vertices List of all navmesh vertices
      * @param polygons List of polygons (each polygon is a list of vertex indices)
      * @param entity_radius The radius of the entity for collision checking
+     * @param nav_grid Nav Grid for faster queries
      * @return Vector of 2D waypoints along the path, or empty if no path found
      */
     static std::vector<Vec2> FindPath(
@@ -32,7 +48,8 @@ public:
         const Vec2& goal_pos,
         const std::vector<Vec2>& vertices,
         const std::vector<std::vector<uint32_t>>& polygons,
-        float entity_radius = 0.0f
+        float entity_radius = 0.0f,
+        const NavGrid* nav_grid = nullptr
     );
 
 private:

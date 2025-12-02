@@ -76,6 +76,15 @@ public:
      * @return Vector with serialized map data, or empty vector on failure
      */
     static std::vector<uint8_t> serialize_map(Entity* map_entity);
+    /**
+     * Build spatial acceleration grid for fast polygon lookups.
+     * Divides map space into uniform cells and assigns polygon IDs to each cell.
+     * Static data - computed once at load time, never modified.
+     * @param map The map to build grid for (modified in-place)
+     * @param cell_size Size of each grid cell in world units (default 50.0f)
+     */
+    static void build_polygon_grid(Map& map, float cell_size = 50.0f);
+
 private:
     /**
      * Structure to hold transformation matrix data.

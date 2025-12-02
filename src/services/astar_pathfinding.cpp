@@ -6,7 +6,8 @@ std::vector<Vec2> AStarPathfinder::FindPath(
     const Vec2& goal_pos,
     const std::vector<Vec2>& vertices,
     const std::vector<std::vector<uint32_t>>& polygons,
-    float entity_radius
+    float entity_radius,
+    const NavGrid* grid
 ) {
     // Handle edge cases
     if (vertices.empty() || polygons.empty()) {
@@ -22,86 +23,96 @@ std::vector<Vec2> AStarPathfinder::FindPath(
         return {start_pos, goal_pos};
     }
 
-    // Find which polygon contains the start position
-    int start_polygon = -1;
-    for (int i = 0; i < static_cast<int>(polygons.size()); ++i) {
-        std::vector<Vec2> poly_verts;
-        for (uint32_t vertex_idx : polygons[i]) {
-            if (vertex_idx < vertices.size()) {
-                poly_verts.push_back(vertices[vertex_idx]);
+    // Helper lambda to find polygon containing position using grid
+    auto FindPolygonContainingPoint = [&](const Vec2& pos) -> uint32_t {
+        if (!grid || !grid->IsBuilt()) {
+            return UINT32_MAX;
+        }
+        
+        Vec2 rel_pos = pos - grid->grid_origin;
+        int gx = static_cast<int>(std::floor(rel_pos.x / grid->grid_cell_size));
+        int gy = static_cast<int>(std::floor(rel_pos.y / grid->grid_cell_size));
+        
+        gx = std::max(0, std::min(gx, grid->grid_width - 1));
+        gy = std::max(0, std::min(gy, grid->grid_height - 1));
+        
+        int cell_index = gy * grid->grid_width + gx;
+        if (cell_index >= 0 && cell_index < static_cast<int>(grid->grid_cells.size())) {
+            const auto& candidates = grid->grid_cells[cell_index];
+            for (uint32_t poly_id : candidates) {
+                if (poly_id < polygons.size()) {
+                    std::vector<Vec2> poly_verts;
+                    for (uint32_t vertex_idx : polygons[poly_id]) {
+                        if (vertex_idx < vertices.size()) {
+                            poly_verts.push_back(vertices[vertex_idx]);
+                        }
+                    }
+                    if (PointInPolygon(pos, poly_verts)) {
+                        return poly_id;
+                    }
+                }
             }
         }
-        if (PointInPolygon(start_pos, poly_verts)) {
-            start_polygon = i;
-            break;
-        }
-    }
+        return UINT32_MAX;
+    };
 
-    // Find which polygon contains the goal position
-    int goal_polygon = -1;
-    for (int i = 0; i < static_cast<int>(polygons.size()); ++i) {
-        std::vector<Vec2> poly_verts;
-        for (uint32_t vertex_idx : polygons[i]) {
-            if (vertex_idx < static_cast<int>(vertices.size())) {
-                poly_verts.push_back(vertices[vertex_idx]);
+    // Helper lambda to find closest polygon to a position
+    auto FindClosestPolygon = [&](const Vec2& pos) -> int {
+        float closest_dist = std::numeric_limits<float>::max();
+        int closest_idx = -1;
+        
+        for (int i = 0; i < static_cast<int>(polygons.size()); ++i) {
+            std::vector<Vec2> poly_verts;
+            for (uint32_t vertex_idx : polygons[i]) {
+                if (vertex_idx < vertices.size()) {
+                    poly_verts.push_back(vertices[vertex_idx]);
+                }
+            }
+            Vec2 centroid = GetPolygonCentroid(poly_verts);
+            float dist = pos.distance_to(centroid);
+            if (dist < closest_dist) {
+                closest_dist = dist;
+                closest_idx = i;
             }
         }
-        if (PointInPolygon(goal_pos, poly_verts)) {
-            goal_polygon = i;
-            break;
-        }
-    }
+        return closest_idx;
+    };
 
-    LOG_DEBUG("A*: start_polygon=%d, goal_polygon=%d for path (%.1f, %.1f) -> (%.1f, %.1f)", 
+    // Find which polygons contain start and goal positions
+    uint32_t start_polygon = FindPolygonContainingPoint(start_pos);
+    uint32_t goal_polygon = FindPolygonContainingPoint(goal_pos);
+
+    LOG_DEBUG("A*: start_polygon=%u, goal_polygon=%u for path (%.1f, %.1f) -> (%.1f, %.1f)", 
              start_polygon, goal_polygon, start_pos.x, start_pos.y, goal_pos.x, goal_pos.y);
 
     // If either position is not in a polygon, try to find the closest polygon
-    if (start_polygon == -1) {
-        float closest_dist = std::numeric_limits<float>::max();
-        for (int i = 0; i < static_cast<int>(polygons.size()); ++i) {
-            Vec2 centroid = GetPolygonCentroid(std::vector<Vec2>{});
-            for (uint32_t vertex_idx : polygons[i]) {
-                if (vertex_idx < vertices.size()) {
-                    centroid.x += vertices[vertex_idx].x;
-                    centroid.y += vertices[vertex_idx].y;
-                }
-            }
-            centroid.x /= polygons[i].size();
-            centroid.y /= polygons[i].size();
-
-            float dist = start_pos.distance_to(centroid);
-            if (dist < closest_dist) {
-                closest_dist = dist;
-                start_polygon = i;
-            }
-        }
+    if (start_polygon == UINT32_MAX) {
+        int closest = FindClosestPolygon(start_pos);
+        start_polygon = (closest >= 0) ? static_cast<uint32_t>(closest) : UINT32_MAX;
     }
 
-    if (goal_polygon == -1) {
-        float closest_dist = std::numeric_limits<float>::max();
-        for (int i = 0; i < static_cast<int>(polygons.size()); ++i) {
-            Vec2 centroid;
-            for (uint32_t vertex_idx : polygons[i]) {
-                if (vertex_idx < vertices.size()) {
-                    centroid.x += vertices[vertex_idx].x;
-                    centroid.y += vertices[vertex_idx].y;
-                }
-            }
-            centroid.x /= polygons[i].size();
-            centroid.y /= polygons[i].size();
-
-            float dist = goal_pos.distance_to(centroid);
-            if (dist < closest_dist) {
-                closest_dist = dist;
-                goal_polygon = i;
-            }
-        }
+    if (goal_polygon == UINT32_MAX) {
+        int closest = FindClosestPolygon(goal_pos);
+        goal_polygon = (closest >= 0) ? static_cast<uint32_t>(closest) : UINT32_MAX;
     }
 
-    if (start_polygon == -1 || goal_polygon == -1) {
+    if (start_polygon == UINT32_MAX || goal_polygon == UINT32_MAX) {
         // Fallback: return direct path since we couldn't locate in polygons
         // This can happen if spawnpoints are outside the navmesh or on edges
         return {start_pos, goal_pos};
+    }
+
+    // Pre-compute polygon centroids to avoid redundant calculations
+    std::vector<Vec2> polygon_centroids;
+    polygon_centroids.reserve(polygons.size());
+    for (const auto& polygon : polygons) {
+        std::vector<Vec2> verts;
+        for (uint32_t idx : polygon) {
+            if (idx < vertices.size()) {
+                verts.push_back(vertices[idx]);
+            }
+        }
+        polygon_centroids.push_back(GetPolygonCentroid(verts));
     }
 
     // A* algorithm on polygon graph
@@ -114,7 +125,7 @@ std::vector<Vec2> AStarPathfinder::FindPath(
     Node start_node;
     start_node.polygon_id = start_polygon;
     start_node.g_cost = 0.0f;
-    start_node.h_cost = Heuristic(start_pos, goal_pos);
+    start_node.h_cost = Heuristic(polygon_centroids[start_polygon], goal_pos);
     start_node.parent_polygon = UINT32_MAX;
     start_node.is_start = true;
     start_node.is_goal = (start_polygon == goal_polygon);
@@ -161,7 +172,7 @@ std::vector<Vec2> AStarPathfinder::FindPath(
         }
         in_closed_set[current.polygon_id] = true;
 
-        // Check all neighbors
+        // Check only adjacent neighbors, not all polygons
         for (uint32_t neighbor_id = 0; neighbor_id < polygons.size(); ++neighbor_id) {
             if (in_closed_set[neighbor_id]) {
                 continue;
@@ -171,30 +182,9 @@ std::vector<Vec2> AStarPathfinder::FindPath(
                 continue;
             }
 
-            // Calculate cost to neighbor
-            Vec2 current_center = GetPolygonCentroid(
-                [&]() {
-                    std::vector<Vec2> verts;
-                    for (uint32_t idx : polygons[current.polygon_id]) {
-                        if (idx < vertices.size()) {
-                            verts.push_back(vertices[idx]);
-                        }
-                    }
-                    return verts;
-                }()
-            );
-
-            Vec2 neighbor_center = GetPolygonCentroid(
-                [&]() {
-                    std::vector<Vec2> verts;
-                    for (uint32_t idx : polygons[neighbor_id]) {
-                        if (idx < vertices.size()) {
-                            verts.push_back(vertices[idx]);
-                        }
-                    }
-                    return verts;
-                }()
-            );
+            // Use pre-computed centroids
+            const Vec2& current_center = polygon_centroids[current.polygon_id];
+            const Vec2& neighbor_center = polygon_centroids[neighbor_id];
 
             float move_cost = current_center.distance_to(neighbor_center);
             float new_g_cost = g_costs[current.polygon_id] + move_cost;
@@ -266,14 +256,16 @@ bool AStarPathfinder::ArePolygonsAdjacent(
     const std::vector<uint32_t>& poly2
 ) {
     // Two polygons are adjacent if they share at least 2 vertices (an edge)
+    // Use early termination for faster rejection of non-adjacent polygons
     int shared_vertices = 0;
     for (uint32_t v1 : poly1) {
         for (uint32_t v2 : poly2) {
             if (v1 == v2) {
                 shared_vertices++;
                 if (shared_vertices >= 2) {
-                    return true;
+                    return true;  // Early exit when adjacency confirmed
                 }
+                break;  // Found this vertex, move to next v1
             }
         }
     }

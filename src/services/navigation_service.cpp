@@ -29,6 +29,17 @@ struct NavigationService::NavServiceBackend {
     
     void start_worker() {
         running = true;
+        
+        // Verify grid was built during map loading
+        if (map.grid_width > 0 && map.grid_height > 0) {
+            LOG_INFO("NavigationService: Using precomputed grid (size: %dx%d, cell_size: %.1f)",
+                     map.grid_width, map.grid_height, map.grid_cell_size);
+        } else {
+            LOG_ERROR("NavigationService: Navmesh grid not precomputed. Closing navigation service.");
+            running = false;
+            return;
+        }
+        
         worker = std::thread([this]() {
             LOG_INFO("Spinning off NavigationService backend thread");
             start_work();
@@ -73,12 +84,21 @@ struct NavigationService::NavServiceBackend {
             std::vector<Vec2> navmesh_vertices = this->map.vertices;
             std::vector<std::vector<uint32_t>> navmesh_polygons = this->map.polygons;
 
+            // Create grid structure reference from map component
+            AStarPathfinder::NavGrid grid;
+            grid.grid_cells = this->map.grid_cells;
+            grid.grid_origin = this->map.grid_origin;
+            grid.grid_cell_size = this->map.grid_cell_size;
+            grid.grid_width = this->map.grid_width;
+            grid.grid_height = this->map.grid_height;
+
             std::vector<Vec2> path_2d = AStarPathfinder::FindPath(
                 req.current_position,
                 req.destination,
                 navmesh_vertices,
                 navmesh_polygons,
-                req.entity_pathing_radius
+                req.entity_pathing_radius,
+                &grid  // Pass grid from map component
             );
 
             // Store the 2D path directly

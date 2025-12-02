@@ -25,5 +25,16 @@ struct Map : public Component {
     Vec2 size = Vec2(0.0f, 0.0f); //width, height
     Vec2 offset = Vec2(0.0f, 0.0f); // 1/2 width, 1/2 height - cmkrist 15/11/2025
     
+    // ===== Spatial Grid (computed at load time) =====
+    // 2D grid of polygon IDs for fast point-in-polygon queries.
+    // Grid layout: grid_cells[y * grid_width + x] = {polygon_ids}
+    // Computed once at map load, never modified afterwards.
+    
+    std::vector<std::vector<uint32_t>> grid_cells;  // grid_cells[index] = list of polygon IDs
+    Vec2 grid_origin;                                // World position of grid origin (bottom-left)
+    float grid_cell_size = 50.0f;                    // Size of each grid cell in world units
+    int grid_width = 0;                              // Number of cells in X direction
+    int grid_height = 0;                             // Number of cells in Y direction
+    
     COMPONENT_TYPE_ID(Map, 2005)
 };

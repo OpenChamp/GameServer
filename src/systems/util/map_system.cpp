@@ -120,6 +120,9 @@ std::optional<Map> MapSystem::load_map(const std::optional<std::string>& file_pa
     // Offset is the center point between min and max
     map.offset = Vec2((bounds.min.x + bounds.max.x) / 2.0f, (bounds.min.y + bounds.max.y) / 2.0f);
 
+    // Build spatial acceleration grid for fast polygon lookups
+    MapSystem::build_polygon_grid(map, 1.0f);
+
     LOG_INFO("Loaded map '%s' with %zu vertices, %zu polygons, and %zu spawnpoints",
              map.name.c_str(), navmesh_data.vertices.size(), navmesh_data.polygons.size(), spawnpoints.size());
 
@@ -659,4 +662,121 @@ void MapSystem::apply_navigation_region_transform(const std::string& file_conten
     
     LOG_INFO("Applied NavigationRegion3D transform to %zu vertices and %zu spawnpoints", 
              vertices.size(), spawnpoints.size());
+}
+
+void MapSystem::build_polygon_grid(Map& map, float cell_size) {
+    if (map.vertices.empty() || map.polygons.empty() || cell_size <= 0.0f) {
+        LOG_WARN("build_polygon_grid: Invalid input (vertices: %zu, polygons: %zu, cell_size: %.1f)",
+                 map.vertices.size(), map.polygons.size(), cell_size);
+        return;
+    }
+
+    map.grid_cell_size = cell_size;
+
+    // Find bounding box of all vertices
+    Vec2 min_bounds = map.vertices[0];
+    Vec2 max_bounds = map.vertices[0];
+
+    for (const auto& vertex : map.vertices) {
+        min_bounds.x = std::min(min_bounds.x, vertex.x);
+        min_bounds.y = std::min(min_bounds.y, vertex.y);
+        max_bounds.x = std::max(max_bounds.x, vertex.x);
+        max_bounds.y = std::max(max_bounds.y, vertex.y);
+    }
+
+    // Add padding to bounds to handle edge cases
+    const float PADDING = cell_size * 0.5f;
+    min_bounds.x -= PADDING;
+    min_bounds.y -= PADDING;
+    max_bounds.x += PADDING;
+    max_bounds.y += PADDING;
+
+    map.grid_origin = min_bounds;
+
+    // Calculate grid dimensions
+    Vec2 bounds_size = max_bounds - min_bounds;
+    map.grid_width = std::max(1, static_cast<int>(std::ceil(bounds_size.x / cell_size)));
+    map.grid_height = std::max(1, static_cast<int>(std::ceil(bounds_size.y / cell_size)));
+
+    // Initialize grid: grid_cells[y * grid_width + x] = {polygon_ids}
+    map.grid_cells.resize(map.grid_width * map.grid_height);
+
+    LOG_DEBUG("build_polygon_grid: Grid dimensions %dx%d (cell_size: %.1f, bounds: (%.1f,%.1f) to (%.1f,%.1f))",
+             map.grid_width, map.grid_height, cell_size,
+             min_bounds.x, min_bounds.y, max_bounds.x, max_bounds.y);
+
+    // Helper lambda to get polygon bounds
+    auto GetPolygonBounds = [&](const std::vector<uint32_t>& polygon, Vec2& out_min, Vec2& out_max) {
+        if (polygon.empty()) {
+            out_min = Vec2(0.0f, 0.0f);
+            out_max = Vec2(0.0f, 0.0f);
+            return;
+        }
+
+        uint32_t first_idx = polygon[0];
+        if (first_idx >= map.vertices.size()) {
+            out_min = Vec2(0.0f, 0.0f);
+            out_max = Vec2(0.0f, 0.0f);
+            return;
+        }
+
+        out_min = map.vertices[first_idx];
+        out_max = map.vertices[first_idx];
+
+        for (uint32_t vertex_idx : polygon) {
+            if (vertex_idx >= map.vertices.size()) {
+                continue;
+            }
+
+            const Vec2& vertex = map.vertices[vertex_idx];
+            out_min.x = std::min(out_min.x, vertex.x);
+            out_min.y = std::min(out_min.y, vertex.y);
+            out_max.x = std::max(out_max.x, vertex.x);
+            out_max.y = std::max(out_max.y, vertex.y);
+        }
+    };
+
+    // Helper lambda to convert world position to grid coordinates
+    auto WorldToGridCoords = [&](const Vec2& world_pos, int& out_x, int& out_y) {
+        Vec2 relative_pos = world_pos - map.grid_origin;
+        
+        out_x = static_cast<int>(std::floor(relative_pos.x / cell_size));
+        out_y = static_cast<int>(std::floor(relative_pos.y / cell_size));
+
+        // Clamp to valid grid range
+        out_x = std::max(0, std::min(out_x, map.grid_width - 1));
+        out_y = std::max(0, std::min(out_y, map.grid_height - 1));
+    };
+
+    // Add each polygon to grid cells it overlaps
+    for (uint32_t poly_id = 0; poly_id < map.polygons.size(); ++poly_id) {
+        Vec2 poly_min, poly_max;
+        GetPolygonBounds(map.polygons[poly_id], poly_min, poly_max);
+
+        // Convert polygon bounds to grid coordinates
+        int min_x, min_y, max_x, max_y;
+        WorldToGridCoords(poly_min, min_x, min_y);
+        WorldToGridCoords(poly_max, max_x, max_y);
+
+        // Add polygon ID to all grid cells it overlaps
+        for (int y = min_y; y <= max_y; ++y) {
+            for (int x = min_x; x <= max_x; ++x) {
+                int index = y * map.grid_width + x;
+                map.grid_cells[index].push_back(poly_id);
+            }
+        }
+    }
+
+    // Log statistics
+    int total_entries = 0;
+    int non_empty_cells = 0;
+    for (const auto& cell : map.grid_cells) {
+        if (!cell.empty()) {
+            non_empty_cells++;
+            total_entries += cell.size();
+        }
+    }
+
+    LOG_INFO("Polygon grid built: %d non-empty cells, %.1f polygons per cell average",
+             non_empty_cells, non_empty_cells > 0 ? static_cast<float>(total_entries) / non_empty_cells : 0.0f);
 }
