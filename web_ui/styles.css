@@ -1,0 +1,29 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    background: #1e1e1e;
+    color: #d4d4d4;
+}
+
+canvas {
+    border: 1px solid #404040;
+    background: #000;
+    margin: 20px 0;
+    display: block;
+}
+
+.info {
+    font-family: monospace;
+    white-space: pre;
+    background: #252526;
+    padding: 10px;
+}
+
+.entity {
+    margin: 5px 0;
+}
+
+h2 {
+    border-bottom: 1px solid #404040;
+    padding-bottom: 10px;
+}

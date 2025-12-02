@@ -91,6 +91,13 @@ private:
     std::string get_html_page() const;
     
     /**
+     * Get file content from disk.
+     * @param path Path to file relative to working directory
+     * @return File content or empty string if not found
+     */
+    std::string get_file_content(const std::string& path) const;
+    
+    /**
      * Get current game state as JSON.
      * @return JSON string with map, entities, and state
      */
