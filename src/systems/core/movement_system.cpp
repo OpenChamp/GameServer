@@ -6,6 +6,7 @@
 #include <components/stats.hpp>
 #include <components/entity_state.hpp>
 #include <components/intent.hpp>
+#include <components/player_owned.hpp>
 #include <libs/log.hpp>
 #include <cmath>
 
@@ -164,6 +165,8 @@ void MovementSystem::request_new_path(Entity& entity, Vec2 target, NavigationSer
     request.current_position = movement->position;
     request.destination = target;
     request.entity_pathing_radius = 0.5f;
+    // Prioritize if this entity is player-controlled
+    request.is_player_input = entity.has_component<PlayerOwnedComponent>();
     
     if (navigation_service->MakeRequest(request)) {
         pathfinding->waypoints.clear();

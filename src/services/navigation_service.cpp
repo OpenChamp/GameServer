@@ -8,20 +8,26 @@
 #include <condition_variable>
 
 #include <libs/log.hpp>
-#include <libs/frame_timer.h>
 
 #include <components/map.hpp>
+
+// Comparator for priority queue: higher priority (player input) comes first
+struct PathRequestComparator {
+    bool operator()(const PathRequest& a, const PathRequest& b) const {
+        // In priority_queue, returning true means 'a' should come AFTER 'b'
+        // So we return true if a has LOWER priority than b
+        return a.priority() < b.priority();
+    }
+};
 
 struct NavigationService::NavServiceBackend {
     std::thread worker;
     Map map;
     std::atomic<bool> running{false};
-    std::queue<PathRequest> requests;
+    std::priority_queue<PathRequest, std::vector<PathRequest>, PathRequestComparator> requests;
     std::queue<PathResult> results;
     std::queue<PathResult> waitingResults;
     std::mutex mtx;
-    // TODO what frame rate should this run at? infinite? - ploinky 14/11/2025
-    FrameTimer frame_timer = FrameTimer(30);
 
     NavServiceBackend() {
         // Don't start thread yet - wait for map to be assigned
@@ -70,7 +76,7 @@ struct NavigationService::NavServiceBackend {
                 continue;
             }
 
-            PathRequest req = requests.front();
+            PathRequest req = requests.top();
             requests.pop();
 
             // we have our request, we can unlock for now and do the pathing

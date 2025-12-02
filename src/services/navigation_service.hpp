@@ -13,6 +13,12 @@ public:
     float entity_pathing_radius;
     Vec2 current_position;
     Vec2 destination;
+    bool is_player_input = false;
+    
+    // For priority queue ordering: higher priority value = processes first
+    int priority() const {
+        return is_player_input ? 1 : 0;
+    }
 };
 
 class PathResult {

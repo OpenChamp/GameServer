@@ -11,6 +11,7 @@
 #include <components/target.hpp>
 #include <components/attack.hpp>
 #include <components/intent.hpp>
+#include <components/metadata.hpp>
 
 /**
  * Convert string to DamageType enum.
@@ -145,6 +146,16 @@ EntityTemplate DataLoader::load_entity_template(std::string file_name) {
         LOAD_ATTRIBUTE(npc_node, npc, aggression_range, float)
         LOAD_ATTRIBUTE(npc_node, npc, chase_distance, float)
         temp.component_templates.push_back(npc);
+    }
+
+    pugi::xml_node meta_node = rootNode.child("meta");
+    if(!meta_node.empty()) {
+        std::shared_ptr<MetadataComponent> meta = std::make_shared<MetadataComponent>();
+        LOAD_ATTRIBUTE(meta_node, meta, name, string)
+        LOAD_ATTRIBUTE(meta_node, meta, description, string)
+        LOAD_ATTRIBUTE(meta_node, meta, icon, string)
+        LOAD_ATTRIBUTE(meta_node, meta, model, string)
+        temp.component_templates.push_back(meta);
     }
 
     pugi::xml_node target_node = rootNode.child("target");

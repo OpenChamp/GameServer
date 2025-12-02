@@ -6,6 +6,13 @@
     xsi:schemaLocation="https://open-champ.com/mySchema ../_entity.xsd"
     id="champion"
 >
+    <meta
+        name="Champion"
+        description="A brave champion ready for battle."
+        icon="icons/champion_icon.png"
+        model="models/champion_model.obj"
+    />
+    <player_control />
     <movement />
     <stats
         max_health="500"
