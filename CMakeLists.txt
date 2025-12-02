@@ -69,7 +69,6 @@ set(GAMESERVER_SOURCES
 	# Systems - Utilities
 	src/systems/util/combat_calculator.cpp
 	src/systems/util/data_loader.cpp
-	src/systems/util/map_system.cpp
 	src/systems/util/packet_handler.cpp
 	src/systems/util/player_manager.cpp
 	src/systems/util/serialization_system.cpp

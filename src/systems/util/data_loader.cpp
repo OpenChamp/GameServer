@@ -1,6 +1,10 @@
 #include <systems/util/data_loader.hpp>
 
 #include <filesystem>
+#include <fstream>
+#include <sstream>
+#include <cstring>
+#include <algorithm>
 
 #include <libs/pugixml.hpp>
 #include <components/component_registry.hpp>
@@ -230,6 +234,175 @@ EntityTemplate DataLoader::load_entity_template(std::string file_name) {
 
     LOG_INFO("Successfully loaded template entity \"%s\" from %s with %d components", temp.id.c_str(), file_name.c_str(), temp.component_templates.size());
     return temp;
+}
+
+std::pair<std::vector<Vec2>, std::vector<std::vector<uint32_t>>> DataLoader::load_navmesh_obj(const std::string& nav_file_path) {
+    std::vector<Vec2> vertices;
+    std::vector<std::vector<uint32_t>> polygons;
+    
+    std::ifstream file(nav_file_path);
+    if (!file.is_open()) {
+        LOG_ERROR("Failed to open navmesh OBJ file: %s", nav_file_path.c_str());
+        return { vertices, polygons };
+    }
+    
+    std::string line;
+    uint32_t line_number = 0;
+    
+    while (std::getline(file, line)) {
+        line_number++;
+        
+        // Skip empty lines and comments
+        if (line.empty() || line[0] == '#') {
+            continue;
+        }
+        
+        std::istringstream iss(line);
+        std::string prefix;
+        iss >> prefix;
+        
+        // Parse vertex (v x y z)
+        if (prefix == "v") {
+            float x, y, z;
+            if (!(iss >> x >> y >> z)) {
+                LOG_ERROR("Failed to parse vertex at line %u in: %s", line_number, nav_file_path.c_str());
+                continue;
+            }
+            // Store as Vec2, using X and Z coordinates (Y is elevation)
+            vertices.push_back(Vec2(x, z));
+        }
+        // Parse face (f v1 v2 v3 ...)
+        else if (prefix == "f") {
+            std::vector<uint32_t> polygon;
+            std::string vertex_str;
+            
+            while (iss >> vertex_str) {
+                // OBJ indices are 1-based, convert to 0-based
+                uint32_t vertex_index = 0;
+                
+                // Handle formats: v, v/vt, v/vt/vn, v//vn
+                size_t first_slash = vertex_str.find('/');
+                if (first_slash != std::string::npos) {
+                    vertex_index = std::stoul(vertex_str.substr(0, first_slash)) - 1;
+                } else {
+                    vertex_index = std::stoul(vertex_str) - 1;
+                }
+                
+                // Validate vertex index
+                if (vertex_index >= vertices.size()) {
+                    LOG_ERROR("Invalid vertex index %u at line %u in: %s (only %zu vertices defined)", 
+                              vertex_index + 1, line_number, nav_file_path.c_str(), vertices.size());
+                    continue;
+                }
+                
+                polygon.push_back(vertex_index);
+            }
+            
+            if (polygon.size() >= 3) {
+                polygons.push_back(polygon);
+            } else if (!polygon.empty()) {
+                LOG_ERROR("Face with fewer than 3 vertices at line %u in: %s", line_number, nav_file_path.c_str());
+            }
+        }
+    }
+    
+    file.close();
+    
+    LOG_INFO("Loaded navmesh from %s: %zu polygons, %zu vertices", 
+             nav_file_path.c_str(), polygons.size(), vertices.size());
+    
+    return { vertices, polygons };
+}
+
+std::optional<Map> DataLoader::load_map(const std::string& map_name, const std::string& map_dir) {
+    Map map;
+    
+    // Verify map directory exists
+    if (!std::filesystem::exists(map_dir)) {
+        LOG_ERROR("Map directory does not exist: %s", map_dir.c_str());
+        return std::nullopt;
+    }
+    
+    // Construct file paths
+    std::string xml_path = map_dir + map_name + ".xml";
+    std::string nav_path = map_dir + map_name + ".nav.obj";
+    
+    // Check both files exist
+    if (!std::filesystem::exists(xml_path)) {
+        LOG_ERROR("Map XML file not found: %s", xml_path.c_str());
+        return std::nullopt;
+    }
+    
+    if (!std::filesystem::exists(nav_path)) {
+        LOG_ERROR("Map navmesh file not found: %s", nav_path.c_str());
+        return std::nullopt;
+    }
+    
+    // Load XML metadata
+    pugi::xml_document doc;
+    pugi::xml_parse_status status = doc.load_file(xml_path.c_str()).status;
+    if (status != pugi::xml_parse_status::status_ok) {
+        LOG_ERROR("Failed to parse map XML file: %s, pugixml status is %d", xml_path.c_str(), status);
+        return std::nullopt;
+    }
+    
+    pugi::xml_node map_node = doc.child("map");
+    if (map_node == NULL) {
+        LOG_ERROR("Map XML file missing 'map' root element: %s", xml_path.c_str());
+        return std::nullopt;
+    }
+    
+    // Extract map name
+    std::string map_id = map_node.attribute("id").as_string("");
+    if (map_id.empty()) {
+        map_id = map_name;  // Fallback to provided map name
+    }
+    map.name = map_id;
+    
+    // Load navmesh OBJ data
+    auto [vertices, polygons] = load_navmesh_obj(nav_path);
+    if (vertices.empty() || polygons.empty()) {
+        LOG_ERROR("Failed to load navmesh data from: %s", nav_path.c_str());
+        return std::nullopt;
+    }
+    
+    map.vertices = vertices;
+    map.polygons = polygons;
+    
+    // Parse spawn points from XML (if they exist)
+    pugi::xml_node spawn_points_node = map_node.child("spawn_points");
+    if (!spawn_points_node.empty()) {
+        for (pugi::xml_node spawn = spawn_points_node.child("spawn"); spawn; spawn = spawn.next_sibling("spawn")) {
+            pugi::xml_node pos_node = spawn.child("position");
+            if (!pos_node.empty()) {
+                float x = pos_node.attribute("x").as_float(0.0f);
+                float z = pos_node.attribute("z").as_float(0.0f);
+                map.spawnpoints.push_back(Vec2(x, z));
+                LOG_DEBUG("Loaded spawn point: (%.1f, %.1f)", x, z);
+            }
+        }
+    }
+        
+    // Calculate map bounds and derived size/offset from vertices
+    if (!vertices.empty()) {
+        float min_x = vertices[0].x, max_x = vertices[0].x;
+        float min_y = vertices[0].y, max_y = vertices[0].y;
+        
+        for (const auto& v : vertices) {
+            min_x = std::min(min_x, v.x);
+            max_x = std::max(max_x, v.x);
+            min_y = std::min(min_y, v.y);
+            max_y = std::max(max_y, v.y);
+        }
+        
+        map.size = Vec2(max_x - min_x, max_y - min_y);
+        map.offset = Vec2((min_x + max_x) / 2.0f, (min_y + max_y) / 2.0f);
+    }
+    
+    LOG_INFO("Loaded map '%s' from XML: %zu vertices, %zu polygons, %zu spawnpoints",
+             map.name.c_str(), map.vertices.size(), map.polygons.size(), map.spawnpoints.size());
+    
+    return std::optional<Map>(map);
 }
 
 std::vector<std::string> DataLoader::list_files_from_directory(std::string path, std::string file_ending) {

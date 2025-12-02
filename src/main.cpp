@@ -40,6 +40,8 @@ static std::string get_map_path_from_env() {
     LOG_INFO("No map file path or name specified in environment, using default map");
     return "";
 }
+
+
 void signal_handler(int signal) {
     if (signal == SIGINT && g_server_instance) {
         LOG_INFO("Shutdown signal received. Cleaning up...");

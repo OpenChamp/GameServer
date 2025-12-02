@@ -11,7 +11,7 @@
 #include <components/movement.hpp>
 
 #include <systems/core/wave_system.hpp>
-#include <systems/util/map_system.hpp>
+#include <systems/util/data_loader.hpp>
 #include <systems/util/packet_validator.hpp>
 
 GameServer::GameServer(int port, int max_clients, const std::string& map_path)
@@ -36,17 +36,17 @@ GameServer::~GameServer() {
 }
 
 ERROR_CODE GameServer::initialize() {
-    // Initialize Map
-    std::optional<Map> map_opt = MapSystem::load_map(map_path_);
+    // Load map using DataLoader
+    std::optional<Map> map_opt = DataLoader::load_map(map_path_);
     if (!map_opt) {
         LOG_ERROR("Failed to load map");
         return ERROR_CODE::ERROR_ENET_CREATION_FAILED;
     }
     
-    // Initialize Navigation FIRST before moving map
+    // Initialize Navigation
     navigation_service_ = std::make_unique<NavigationService>(map_opt.value());
     
-    // Now create the pointer copy for map_pointer
+    // Create pointer copy
     map_pointer_ = std::make_unique<Map>(std::move(map_opt.value()));
     
     // Initialize Network
@@ -59,7 +59,7 @@ ERROR_CODE GameServer::initialize() {
         return net_result;
     }
     
-    // Initialize GameplayCoordinator with services
+    // Initialize GameplayCoordinator Systems
     initialize_coordinator();
     
     return ERROR_CODE::ERROR_NONE;
