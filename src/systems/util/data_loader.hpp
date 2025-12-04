@@ -58,4 +58,11 @@ private:
      * @return A pair of (vertices, polygons), empty if loading failed
      */
     static std::pair<std::vector<Vec2>, std::vector<std::vector<uint32_t>>> load_navmesh_obj(const std::string& nav_file_path);
+
+    /**
+     * Build a spatial acceleration grid for polygon queries.
+     * Creates a 2D grid where each cell contains polygon IDs that intersect it.
+     * @param map The map to populate grid data into
+     */
+    static void build_polygon_grid(Map& map);
 };
