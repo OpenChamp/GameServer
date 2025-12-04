@@ -317,6 +317,22 @@ std::string VisualizerService::get_game_state_json() const {
             json << "{\"x\":" << map_->spawnpoints[i].x << ",\"z\":" << map_->spawnpoints[i].y << "}";
         }
         json << "],";
+
+        // Structures
+        json << "\"structures\":[";
+        for (size_t i = 0; i < map_->structures.size(); i++)  {
+            if (i > 0) json << ",";
+            json << "{";
+            json << "\"id\":\"" << map_->structures[i].id << "\",";
+            json << "\"type\":\"" << map_->structures[i].type << "\",";
+            json << "\"team\":" << map_->structures[i].team << ",";
+            json << "\"position\":{\"x\":" << map_->structures[i].position.x << ",\"y\":" << map_->structures[i].position.y << ",\"z\":" << map_->structures[i].position.z << "},";
+            json << "\"rotation\":{\"x\":" << map_->structures[i].rotation.x << ",\"y\":" << map_->structures[i].rotation.y << ",\"z\":" << map_->structures[i].rotation.z << "},";
+            json << "\"scale\":{\"x\":" << map_->structures[i].scale.x << ",\"y\":" << map_->structures[i].scale.y << ",\"z\":" << map_->structures[i].scale.z << "}";
+            json << "}";
+        }
+        json << "],";
+
         
         // Polygon Grid (for visualization)
         json << "\"grid\":{";

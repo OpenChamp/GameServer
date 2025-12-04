@@ -172,7 +172,25 @@ void CollisionSystem::push_colliding_entities(const Entity& entity, const Vec2& 
     }
 }
 
-Vec2 CollisionSystem::find_free_space(const Vec2& position, float collision_radius, EntityManager& entity_manager) {
+Vec2 CollisionSystem::find_free_space(const Vec2& position, float collision_radius, EntityManager& entity_manager, const struct Map* map) {
+    // Helper to check if a position is within grid bounds
+    auto is_within_grid_bounds = [map](const Vec2& pos) -> bool {
+        if (!map || map->grid_width == 0 || map->grid_height == 0) {
+            return true;  // No map or invalid grid, allow any position
+        }
+        
+        // Calculate grid boundaries
+        Vec2 grid_min = map->grid_origin;
+        Vec2 grid_max = map->grid_origin + Vec2(
+            map->grid_width * map->grid_cell_size,
+            map->grid_height * map->grid_cell_size
+        );
+        
+        // Check if position is within bounds
+        return pos.x >= grid_min.x && pos.x <= grid_max.x &&
+               pos.y >= grid_min.y && pos.y <= grid_max.y;
+    };
+    
     // Get all entities with movement components to check for collisions
     auto moving_entities = entity_manager.get_entities_with_component<Movement>();
     
@@ -193,11 +211,12 @@ Vec2 CollisionSystem::find_free_space(const Vec2& position, float collision_radi
         }
     }
     
-    if (position_free) {
+    // If base position is free AND within grid bounds, return it
+    if (position_free && is_within_grid_bounds(position)) {
         return position;
     }
     
-    // If base position is occupied, try to find a free spot nearby
+    // If base position is occupied or outside bounds, try to find a free spot nearby
     // Use expanding circles to search for free space
     constexpr float SEARCH_RADIUS = 5.0f;
     constexpr int SEARCH_SAMPLES = 16;  // Number of angles to check
@@ -207,6 +226,11 @@ Vec2 CollisionSystem::find_free_space(const Vec2& position, float collision_radi
         for (int i = 0; i < SEARCH_SAMPLES; ++i) {
             float angle = (2.0f * PI * i) / SEARCH_SAMPLES;
             Vec2 candidate = position + Vec2(std::cos(angle) * search_distance, std::sin(angle) * search_distance);
+            
+            // Skip if candidate is outside grid bounds
+            if (!is_within_grid_bounds(candidate)) {
+                continue;
+            }
             
             // Check if this candidate position is free
             bool candidate_free = true;
@@ -231,10 +255,29 @@ Vec2 CollisionSystem::find_free_space(const Vec2& position, float collision_radi
         }
     }
     
-    // If no free space found after search, return base position anyway
-    LOG_WARN("CollisionSystem: Could not find free space near (%.1f, %.1f) with radius %.1f, using base position",
-             position.x, position.y, collision_radius);
-    return position;
+    // If no free space found after search, log warning and return original position if in bounds
+    if (is_within_grid_bounds(position)) {
+        LOG_WARN("CollisionSystem: Could not find free space near (%.1f, %.1f) with radius %.1f, using base position",
+                 position.x, position.y, collision_radius);
+        return position;
+    } else {
+        // Original position is outside grid bounds - return closest valid position
+        // Clamp to grid bounds
+        Vec2 grid_min = map->grid_origin;
+        Vec2 grid_max = map->grid_origin + Vec2(
+            map->grid_width * map->grid_cell_size,
+            map->grid_height * map->grid_cell_size
+        );
+        
+        Vec2 clamped_position(
+            std::max(grid_min.x, std::min(position.x, grid_max.x)),
+            std::max(grid_min.y, std::min(position.y, grid_max.y))
+        );
+        
+        LOG_WARN("CollisionSystem: Spawn position (%.1f, %.1f) is outside grid bounds, clamping to (%.1f, %.1f)",
+                 position.x, position.y, clamped_position.x, clamped_position.y);
+        return clamped_position;
+    }
 }
 
 float CollisionSystem::distance(const Vec2& a, const Vec2& b) {

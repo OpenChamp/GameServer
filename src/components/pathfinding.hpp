@@ -18,7 +18,7 @@ struct PathfindingComponent : public Component {
     uint32_t path_request_id = 0;
 
     // True if the entity has requested a path and is currently waiting for it to be calculated
-    bool waiting_for_path;
+    bool waiting_for_path = false;
 
     COMPONENT_TYPE_ID(PathfindingComponent, 2009)
 };

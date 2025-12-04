@@ -15,8 +15,8 @@ EntityID SpawningSystem::spawn_entity_from_template(const SystemContext& ctx,
     // Get collision radius from template to find free space
     float collision_radius = ctx.entity_manager.get_template_collision_radius(template_id);
     
-    // Find collision-free spawn position
-    Vec2 spawn_position = CollisionSystem::find_free_space(position, collision_radius, const_cast<EntityManager&>(ctx.entity_manager));
+    // Find collision-free spawn position within grid bounds
+    Vec2 spawn_position = CollisionSystem::find_free_space(position, collision_radius, const_cast<EntityManager&>(ctx.entity_manager), ctx.map);
     
     // Create entity from template
     Entity& entity = ctx.entity_manager.create_entity_from_template(template_id);
@@ -41,10 +41,28 @@ EntityID SpawningSystem::spawn_entity_from_template(const SystemContext& ctx,
                  entity_id, stats->health, stats->max_health, team_id);
     }
     // Adjust intent objective target based on team
-    // Team 1 moves toward spawnpoint 1, Team 2 moves toward spawnpoint 0 (opposite direction)
+    // Minions should target the enemy core (using structure data from map)
     auto* npc = entity.get_component<NPCComponent>();
     if (npc && npc->npc_type == NPCType::MINION) {
-        npc->objective = (team_id == 1) ? Vec2(0, 28) : Vec2(0, -28);
+        // Find enemy core position from map structures
+        Vec2 enemy_core_position = Vec2(0, 0);  // Default fallback
+        
+        if (ctx.map) {
+            uint8_t enemy_team = (team_id == 1) ? 2 : 1;
+            
+            // Search for enemy core in map structures
+            for (const auto& structure : ctx.map->structures) {
+                if (structure.type == "structure_core" && structure.team == enemy_team) {
+                    // Convert 3D position to 2D (use X and Z, ignore Y)
+                    enemy_core_position = Vec2(structure.position.x, structure.position.z);
+                    LOG_DEBUG("Found enemy core for team %u at position (%.1f, %.1f)", 
+                             team_id, enemy_core_position.x, enemy_core_position.y);
+                    break;
+                }
+            }
+        }
+        
+        npc->objective = enemy_core_position;
         LOG_DEBUG("Entity %u (team %u): Set objective target to <%f, %f>", 
                  entity_id, team_id, npc->objective.x, npc->objective.y);
     }

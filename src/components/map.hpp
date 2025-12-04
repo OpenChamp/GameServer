@@ -6,8 +6,20 @@
 #include <vector>
 
 /**
+ * Represents a single structure on the map (tower, core, etc.) (may become a full component later) -- cmkrist 4/12/2025
+ */
+struct MapStructure {
+    std::string id;
+    std::string type;
+    uint32_t team = 0;
+    Vec3 position;
+    Vec3 rotation;
+    Vec3 scale;
+};
+
+/**
  * Map component for the map entity.
- * Stores map metadata including name, navmesh data, and spawnpoint information.
+ * Stores map metadata including name, navmesh data, spawnpoint information, and structures.
  */
 struct Map : public Component {
     // Map name (e.g., "Konda")
@@ -20,6 +32,9 @@ struct Map : public Component {
     // Spawnpoint positions (used for minion waves)
     // Minions path from spawnpoint[i] to spawnpoint[(i+1) % spawnpoints.size()]
     std::vector<Vec2> spawnpoints;
+    
+    // Structures on the map (towers, cores, etc.)
+    std::vector<MapStructure> structures;
     
     // Grid size and offset
     Vec2 size = Vec2(0.0f, 0.0f); //width, height

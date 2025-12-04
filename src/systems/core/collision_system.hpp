@@ -94,13 +94,15 @@ public:
     /**
      * Find a free spawn position near a given location.
      * Searches for a collision-free position using expanding circle pattern.
+     * Ensures the spawn position remains within the valid navigation grid bounds.
      * 
      * @param position The desired spawn position
      * @param collision_radius The collision radius of the entity to spawn (default 1.0)
      * @param entity_manager Reference to entity manager to check existing entities
-     * @return A nearby collision-free position, or the original position if none found
+     * @param map Pointer to map for grid boundary validation (optional, nullptr skips boundary check)
+     * @return A nearby collision-free position within grid bounds, or the original position if none found
      */
-    static Vec2 find_free_space(const Vec2& position, float collision_radius, EntityManager& entity_manager);
+    static Vec2 find_free_space(const Vec2& position, float collision_radius, EntityManager& entity_manager, const struct Map* map = nullptr);
 
 private:
     /**

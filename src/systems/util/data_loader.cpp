@@ -383,6 +383,50 @@ std::optional<Map> DataLoader::load_map(const std::string& map_name, const std::
             }
         }
     }
+    
+    // Parse structures from XML (if they exist)
+    pugi::xml_node structures_node = map_node.child("structures");
+    if (!structures_node.empty()) {
+        for (pugi::xml_node structure = structures_node.child("structure"); structure; structure = structure.next_sibling("structure")) {
+            MapStructure struct_data;
+            
+            // Load attributes
+            struct_data.id = structure.attribute("id").as_string("");
+            struct_data.type = structure.attribute("type").as_string("");
+            struct_data.team = structure.attribute("team").as_uint(0);
+            
+            // Load position
+            pugi::xml_node pos_node = structure.child("position");
+            if (!pos_node.empty()) {
+                struct_data.position.x = pos_node.attribute("x").as_float(0.0f);
+                struct_data.position.y = pos_node.attribute("y").as_float(0.0f);
+                struct_data.position.z = pos_node.attribute("z").as_float(0.0f);
+            }
+            
+            // Load rotation
+            pugi::xml_node rot_node = structure.child("rotation");
+            if (!rot_node.empty()) {
+                struct_data.rotation.x = rot_node.attribute("x").as_float(0.0f);
+                struct_data.rotation.y = rot_node.attribute("y").as_float(0.0f);
+                struct_data.rotation.z = rot_node.attribute("z").as_float(0.0f);
+            }
+            
+            // Load scale
+            pugi::xml_node scale_node = structure.child("scale");
+            if (!scale_node.empty()) {
+                struct_data.scale.x = scale_node.attribute("x").as_float(1.0f);
+                struct_data.scale.y = scale_node.attribute("y").as_float(1.0f);
+                struct_data.scale.z = scale_node.attribute("z").as_float(1.0f);
+            } else {
+                struct_data.scale = Vec3(1.0f, 1.0f, 1.0f);  // Default scale to 1.0
+            }
+            
+            map.structures.push_back(struct_data);
+            LOG_DEBUG("Loaded structure '%s' of type '%s' (team %u) at (%.1f, %.1f, %.1f)", 
+                     struct_data.id.c_str(), struct_data.type.c_str(), struct_data.team,
+                     struct_data.position.x, struct_data.position.y, struct_data.position.z);
+        }
+    }
         
     // Calculate map bounds and derived size/offset from vertices
     if (!vertices.empty()) {
@@ -403,9 +447,9 @@ std::optional<Map> DataLoader::load_map(const std::string& map_name, const std::
     // Build the polygon grid for spatial acceleration
     build_polygon_grid(map);
     
-    LOG_INFO("Loaded map '%s' from XML: %zu vertices, %zu polygons, %zu spawnpoints. Grid: %dx%d cells",
+    LOG_INFO("Loaded map '%s' from XML: %zu vertices, %zu polygons, %zu spawnpoints, %zu structures. Grid: %dx%d cells",
              map.name.c_str(), map.vertices.size(), map.polygons.size(), map.spawnpoints.size(),
-             map.grid_width, map.grid_height);
+             map.structures.size(), map.grid_width, map.grid_height);
     
     return std::optional<Map>(map);
 }
