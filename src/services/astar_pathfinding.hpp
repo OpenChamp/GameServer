@@ -133,4 +133,16 @@ private:
         const std::vector<std::vector<uint32_t>>& polygons,
         float entity_radius
     );
+
+    /**
+     * Project a position onto the closest point on the navmesh.
+     * If the position is already inside a polygon, returns the position unchanged.
+     * Otherwise, finds the closest point on any polygon edge.
+     */
+    static Vec2 ProjectToNavmesh(
+        const Vec2& pos,
+        const std::vector<Vec2>& vertices,
+        const std::vector<std::vector<uint32_t>>& polygons,
+        const NavGrid* nav_grid = nullptr
+    );
 };

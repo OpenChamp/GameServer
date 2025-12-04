@@ -85,15 +85,26 @@ std::vector<Vec2> AStarPathfinder::FindPath(
     LOG_DEBUG("A*: start_polygon=%u, goal_polygon=%u for path (%.1f, %.1f) -> (%.1f, %.1f)", 
              start_polygon, goal_polygon, start_pos.x, start_pos.y, goal_pos.x, goal_pos.y);
 
-    // If either position is not in a polygon, try to find the closest polygon
+    // If start position is not in a polygon, try to find the closest polygon
     if (start_polygon == UINT32_MAX) {
         int closest = FindClosestPolygon(start_pos);
         start_polygon = (closest >= 0) ? static_cast<uint32_t>(closest) : UINT32_MAX;
     }
 
+    // If goal position is not in a polygon, project it onto the navmesh
     if (goal_polygon == UINT32_MAX) {
-        int closest = FindClosestPolygon(goal_pos);
-        goal_polygon = (closest >= 0) ? static_cast<uint32_t>(closest) : UINT32_MAX;
+        Vec2 projected_goal = ProjectToNavmesh(goal_pos, vertices, polygons, grid);
+        LOG_DEBUG("A*: Goal (%.1f, %.1f) projected to (%.1f, %.1f)", 
+                 goal_pos.x, goal_pos.y, projected_goal.x, projected_goal.y);
+        
+        // Try to find polygon containing the projected position
+        goal_polygon = FindPolygonContainingPoint(projected_goal);
+        
+        // If still not found, find the closest polygon
+        if (goal_polygon == UINT32_MAX) {
+            int closest = FindClosestPolygon(projected_goal);
+            goal_polygon = (closest >= 0) ? static_cast<uint32_t>(closest) : UINT32_MAX;
+        }
     }
 
     if (start_polygon == UINT32_MAX || goal_polygon == UINT32_MAX) {
@@ -428,3 +439,93 @@ std::vector<Vec2> AStarPathfinder::SmoothPath(
 
     return smoothed;
 }
+
+Vec2 AStarPathfinder::ProjectToNavmesh(
+    const Vec2& pos,
+    const std::vector<Vec2>& vertices,
+    const std::vector<std::vector<uint32_t>>& polygons,
+    const NavGrid* nav_grid
+) {
+    // Helper lambda to check if point is in polygon
+    auto IsInPolygon = [&](const Vec2& point, const std::vector<Vec2>& poly_verts) -> bool {
+        return PointInPolygon(point, poly_verts);
+    };
+
+    // Check if position is already inside a polygon
+    if (nav_grid && nav_grid->IsBuilt()) {
+        Vec2 rel_pos = pos - nav_grid->grid_origin;
+        int gx = static_cast<int>(std::floor(rel_pos.x / nav_grid->grid_cell_size));
+        int gy = static_cast<int>(std::floor(rel_pos.y / nav_grid->grid_cell_size));
+        
+        gx = std::max(0, std::min(gx, nav_grid->grid_width - 1));
+        gy = std::max(0, std::min(gy, nav_grid->grid_height - 1));
+        
+        int cell_index = gy * nav_grid->grid_width + gx;
+        if (cell_index >= 0 && cell_index < static_cast<int>(nav_grid->grid_cells.size())) {
+            const auto& candidates = nav_grid->grid_cells[cell_index];
+            for (uint32_t poly_id : candidates) {
+                if (poly_id < polygons.size()) {
+                    std::vector<Vec2> poly_verts;
+                    for (uint32_t vertex_idx : polygons[poly_id]) {
+                        if (vertex_idx < vertices.size()) {
+                            poly_verts.push_back(vertices[vertex_idx]);
+                        }
+                    }
+                    if (IsInPolygon(pos, poly_verts)) {
+                        return pos; // Already inside a polygon
+                    }
+                }
+            }
+        }
+    }
+
+    // Position is not inside a polygon, find closest point on any edge
+    float closest_dist = std::numeric_limits<float>::max();
+    Vec2 closest_point = pos;
+
+    for (const auto& polygon : polygons) {
+        std::vector<Vec2> poly_verts;
+        for (uint32_t vertex_idx : polygon) {
+            if (vertex_idx < vertices.size()) {
+                poly_verts.push_back(vertices[vertex_idx]);
+            }
+        }
+
+        if (poly_verts.size() < 2) continue;
+
+        // Check each edge of this polygon
+        for (size_t i = 0; i < poly_verts.size(); ++i) {
+            const Vec2& v1 = poly_verts[i];
+            const Vec2& v2 = poly_verts[(i + 1) % poly_verts.size()];
+
+            // Find closest point on this edge
+            Vec2 edge = v2 - v1;
+            float edge_len_sq = edge.x * edge.x + edge.y * edge.y;
+            
+            if (edge_len_sq < 0.0001f) {
+                // Degenerate edge, just use v1
+                float dist = pos.distance_to(v1);
+                if (dist < closest_dist) {
+                    closest_dist = dist;
+                    closest_point = v1;
+                }
+                continue;
+            }
+
+            Vec2 to_pos = pos - v1;
+            float t = (to_pos.x * edge.x + to_pos.y * edge.y) / edge_len_sq;
+            t = std::max(0.0f, std::min(1.0f, t)); // Clamp to edge
+
+            Vec2 point_on_edge = v1 + edge * t;
+            float dist = pos.distance_to(point_on_edge);
+
+            if (dist < closest_dist) {
+                closest_dist = dist;
+                closest_point = point_on_edge;
+            }
+        }
+    }
+
+    return closest_point;
+}
+
