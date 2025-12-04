@@ -9,8 +9,19 @@
             "args": ["--visualize"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
-            "environment": [],
-            "console": "externalTerminal"
+            "environment": [{"name": "MAP_NAME", "value": "konda"}],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Win(D) Visual Autostart",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/_output/windows_x64/Debug/gameserver.exe",
+            "args": ["--visualize"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [{"name": "MAP_NAME", "value": "konda"}, {"name": "MAX_CLIENTS", "value": "0"}],
+            "console": "integratedTerminal"
         },
         {
             "name": "Win(D) Debug",
@@ -20,19 +31,19 @@
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
-            "environment": [],
+            "environment": [{"name": "MAP_NAME", "value": "konda"}],
             "console": "integratedTerminal"
         },
         {
             "name": "Win(R) Visual",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/_output/windows_x64/Release/gameserver.exe --visualize",
-            "args": [],
+            "program": "${workspaceFolder}/build/_output/windows_x64/Release/gameserver.exe",
+            "args": ["--visualize"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
-            "environment": [],
-            "console": "externalTerminal"
+            "environment": [{"name": "MAP_NAME", "value": "konda"}],
+            "console": "integratedTerminal"
         },
         {
             "name": "Win(R) Debug",
@@ -42,8 +53,8 @@
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
-            "environment": [],
-            "console": "externalTerminal"
+            "environment": [{"name": "MAP_NAME", "value": "konda"}],
+            "console": "integratedTerminal"
         }
     ]
 }

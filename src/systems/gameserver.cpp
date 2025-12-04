@@ -61,6 +61,17 @@ ERROR_CODE GameServer::initialize() {
     
     // Initialize GameplayCoordinator Systems
     initialize_coordinator();
+
+    // Autostart logic (Unlimited players) -- cmkrist 4/12/
+    if (max_clients_ == 0) {
+        LOG_INFO("max_players set to 0, transitioning straight to ONGOING state");
+        try_transition_state(GAME_STATE::ONGOING);
+    }
+    // Default lobby ready check
+    else if (is_lobby_full() && is_lobby_ready()) {
+        LOG_INFO("Lobby full and ready on startup, transitioning to ONGOING state");
+        try_transition_state(GAME_STATE::ONGOING);
+    }
     
     return ERROR_CODE::ERROR_NONE;
 }
@@ -147,8 +158,7 @@ bool GameServer::is_lobby_full() const {
 
 void GameServer::on_client_connect(std::string client_id) {
     // Lobby check & Map Send
-    
-    if (player_manager_.is_full(max_clients_)) {
+    if (max_clients_ > 0 && player_manager_.is_full(max_clients_)) {
         LOG_WARN("Lobby full! Rejecting new connection from %s", client_id.c_str());
         network_service_.disconnect_client(client_id);
         network_service_.send_packet(PACKET_TYPE::LOBBY_FULL, client_id);
@@ -163,7 +173,9 @@ void GameServer::on_client_connect(std::string client_id) {
     LOG_INFO("Player %s added. Entity ID: %u",
             client_id.c_str(), player_entity_id);
     
-    if (player_manager_.is_full(max_clients_)) {
+    if (max_clients_ == 0) {
+        LOG_INFO("max_players set to 0 (unlimited), player connected");
+    } else if (player_manager_.is_full(max_clients_)) {
         LOG_INFO("Lobby full! Waiting for all players to be ready");
     } else {
         LOG_INFO("Waiting for more players...");
@@ -174,11 +186,18 @@ void GameServer::on_packet_received(std::string client_id, const uint8_t* data, 
     // Delegate to PacketHandler for processing
     packet_handler_.handle_packet(client_id, data, length);
     
-    // Check if we should transition to ONGOING after processing packet
-    if (current_state_ == GAME_STATE::PREGAME && 
-        player_manager_.is_full(max_clients_) && 
-        player_manager_.are_all_players_ready(entity_manager_)) {
-        
+    // Default lobby ready check with autostart -- cmkrist 4/12/2025
+    bool should_start_game = false;
+    if (current_state_ == GAME_STATE::PREGAME) {
+        if (max_clients_ == 0) {
+            should_start_game = true;
+        } else if (player_manager_.is_full(max_clients_) && 
+                   player_manager_.are_all_players_ready(entity_manager_)) {
+            should_start_game = true;
+        }
+    }
+    
+    if (should_start_game) {
         LOG_INFO("All players ready! Transitioning to ONGOING state");
         if (try_transition_state(GAME_STATE::ONGOING)) {
             // Notify all players that the game is starting
