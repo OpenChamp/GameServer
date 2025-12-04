@@ -62,7 +62,6 @@ int main(int argc, char* argv[]) {
         std::string arg(argv[i]);
         if (arg == "--visualize") {
             enable_visualizer = true;
-            LOG_INFO("Visualizer enabled (will run on port %u)", visualizer_port);
         } else if (arg == "--visualize-port" && i + 1 < argc) {
             try {
                 visualizer_port = std::stoi(argv[++i]);
@@ -72,6 +71,7 @@ int main(int argc, char* argv[]) {
             }
         }
     }
+    LOG_INFO("Visualizer: %s ", enable_visualizer ? ("Enabled on port " + std::to_string(visualizer_port)).c_str() : "No");
     
     // Parse port from environment
     int env_port = DEFAULT_PORT;
@@ -82,16 +82,13 @@ int main(int argc, char* argv[]) {
             if (env_port <= MIN_PORT || env_port > MAX_PORT) {
                 LOG_ERROR("Invalid port number: %s. Using default %d", port_env, DEFAULT_PORT);
                 env_port = DEFAULT_PORT;
-            } else {
-                LOG_INFO("Using port from environment: %d\n", env_port);
-            }
+            } 
         } catch (const std::exception& e) {
             LOG_ERROR("Failed to parse SERVER_PORT: %s. Using default %d", e.what(), DEFAULT_PORT);
             env_port = DEFAULT_PORT;
         }
-    } else {
-        LOG_INFO("No port specified in environment, using default %d", DEFAULT_PORT);
     }
+    LOG_INFO("Game Port: %d", env_port);
     
     // Parse max clients from environment
     int max_clients = DEFAULT_MAX_CLIENTS;
@@ -99,19 +96,16 @@ int main(int argc, char* argv[]) {
     if (clients_env != nullptr) {
         try {
             max_clients = std::stoi(clients_env);
-            if (max_clients <= 0 || max_clients > MAX_CLIENTS_LIMIT) {
+            if (max_clients < 0 || max_clients > MAX_CLIENTS_LIMIT) {
                 LOG_ERROR("Invalid MAX_CLIENTS: %s. Using default %d", clients_env, DEFAULT_MAX_CLIENTS);
                 max_clients = DEFAULT_MAX_CLIENTS;
-            } else {
-                LOG_INFO("Using MAX_CLIENTS from environment: %d", max_clients);
             }
         } catch (const std::exception& e) {
             LOG_ERROR("Failed to parse MAX_CLIENTS: %s. Using default %d", e.what(), DEFAULT_MAX_CLIENTS);
             max_clients = DEFAULT_MAX_CLIENTS;
         }
-    } else {
-        LOG_INFO("No MAX_CLIENTS specified in environment, using default %d", DEFAULT_MAX_CLIENTS);
-    }
+    } 
+    LOG_INFO("Max Clients: %d", max_clients);
     
     // Create and initialize server
     GameServer server(env_port, max_clients, get_map_path_from_env());

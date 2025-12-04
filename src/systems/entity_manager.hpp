@@ -124,7 +124,6 @@ class EntityManager {
 public:
     EntityManager() : next_entity_id_(1) {
         // TODO probably use system independent path separator - ploinky 14/11/2025
-        LOG_INFO("Loading templates from ./data/entities");
         for(std::string file_name : DataLoader::list_files_from_directory("./data/entities", ".xml")) {
             EntityTemplate entity_template = DataLoader::load_entity_template(file_name);
             if(entity_template_cache.find(entity_template.id) != entity_template_cache.end()) {
