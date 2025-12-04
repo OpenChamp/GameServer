@@ -16,6 +16,7 @@
         magic_resist="5"
         attack_range="5.5"
         attack_speed="0.8"
+        auto_damage_type="MAGICAL"
     />
     <pathfinding />
     <state />

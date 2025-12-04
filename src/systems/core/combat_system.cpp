@@ -50,13 +50,25 @@ void CombatSystem::update_auto_attack(const SystemContext& ctx, Entity& entity, 
         auto* target_stats = target_entity ? target_entity->get_component<Stats>() : nullptr;
         
         if (target_stats && target_stats->health > 0.0f && intent->target_entity_id != INVALID_ENTITY_ID) {
-            // Calculate damage based on attacker's physical power
-            float damage = stats->physical_power * 1.0f;
+            // Calculate damage based on attacker's auto damage type and appropriate power stat
+            float damage = 0.0f;
+            DamageType damage_type = stats->auto_damage_type;
+            
+            switch (damage_type) {
+                case DamageType::MAGICAL:
+                    damage = stats->magic_power * 1.0f;
+                    break;
+                case DamageType::PHYSICAL:
+                case DamageType::TRUE_DAMAGE:
+                default:
+                    damage = stats->physical_power * 1.0f;
+                    break;
+            }
             
             // Initiate attack
             attack->pending_target = intent->target_entity_id;
             attack->pending_damage = damage;
-            attack->pending_damage_type = DamageType::PHYSICAL;
+            attack->pending_damage_type = damage_type;
             attack->attack_in_progress = true;
             attack->attack_animation_progress = 0.0f;
             attack->can_attack = false;
