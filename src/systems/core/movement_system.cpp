@@ -95,6 +95,19 @@ void MovementSystem::update_direct_movement(const SystemContext& ctx, Entity& en
         ? target_pos 
         : current_pos + (direction.normalized() * distance_to_move);
     
+    // Validate that new position stays within grid bounds
+    if (ctx.map && ctx.map->grid_width > 0 && ctx.map->grid_height > 0) {
+        Vec2 grid_min = ctx.map->grid_origin;
+        Vec2 grid_max = ctx.map->grid_origin + Vec2(
+            ctx.map->grid_width * ctx.map->grid_cell_size,
+            ctx.map->grid_height * ctx.map->grid_cell_size
+        );
+        
+        // Clamp position to grid bounds
+        new_position.x = std::max(grid_min.x, std::min(new_position.x, grid_max.x));
+        new_position.y = std::max(grid_min.y, std::min(new_position.y, grid_max.y));
+    }
+    
     movement.position = new_position;
 }
 
