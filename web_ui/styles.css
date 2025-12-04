@@ -1,3 +1,15 @@
+@import "https://www.nerdfonts.com/assets/css/webfont.css";
+
+@font-face {
+    font-family: "fira-mono";
+    src: url("./FiraMonoNerdFontMono-Regular.otf");
+}
+* {
+    font-size: 14px;
+    box-sizing: border-box;
+    font-family: "fira-mono", monospace;
+}
+
 body {
     font-family: Arial, sans-serif;
     margin: 20px;
@@ -26,4 +38,15 @@ canvas {
 h2 {
     border-bottom: 1px solid #404040;
     padding-bottom: 10px;
+}
+
+.legend-toggle {
+    margin-right: 5px;
+    cursor: pointer;
+}
+
+#legendContainer {
+    background: #252526;
+    padding: 10px;
+    border-radius: 4px;
 }

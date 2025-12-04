@@ -1,6 +1,28 @@
 const canvas = document.getElementById('mapCanvas');
 const ctx = canvas.getContext('2d');
 
+// Visualization layer visibility state
+const layerVisibility = {
+    mapBounds: true,
+    polygonGrid: true,
+    navmesh: true,
+    spawnpoints: true,
+    structures: true,
+    entities: true,
+    targetingLines: true
+};
+
+// Initialize legend toggle event listeners
+function initializeLegendToggles() {
+    const toggles = document.querySelectorAll('.legend-toggle');
+    toggles.forEach(toggle => {
+        toggle.addEventListener('change', (e) => {
+            const layer = e.target.dataset.layer;
+            layerVisibility[layer] = e.target.checked;
+        });
+    });
+}
+
 async function updateView() {
     try {
         const response = await fetch('/api/gamestate');
@@ -11,19 +33,22 @@ async function updateView() {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         // Draw grid first (background)
-        drawPolygonGrid(data.map);
+        if (layerVisibility.polygonGrid) drawPolygonGrid(data.map);
 
         // Draw map bounds
-        drawMapBounds(data.map);
+        if (layerVisibility.mapBounds) drawMapBounds(data.map);
 
         // Draw navmesh
-        drawNavmesh(data.map);
+        if (layerVisibility.navmesh) drawNavmesh(data.map);
 
         // Draw spawnpoints
-        drawSpawnpoints(data.map);
+        if (layerVisibility.spawnpoints) drawSpawnpoints(data.map);
+
+        // Draw structures
+        if (layerVisibility.structures) drawStructures(data.map);
 
         // Draw entities
-        drawEntities(data.entities);
+        if (layerVisibility.entities) drawEntities(data.entities);
 
         // Update state info
         updateStateInfo(data.state);
@@ -262,40 +287,83 @@ function drawSpawnpoints(mapData) {
     }
 }
 
+function drawStructures(mapData) {
+    if (!mapData || !mapData.structures) return;
+    ctx.fillStyle = '#ffa500';
+    ctx.strokeStyle = '#ffa500';
+    ctx.lineWidth = 2;
+
+    for (let struct of mapData.structures) {
+        const screen = worldToScreen(struct.position.x, struct.position.z);
+        // Draw structure based on type
+        switch (struct.type) {
+            case "structure_core":
+                // Core is a crystal shape
+                ctx.beginPath();
+                ctx.moveTo(screen.x, screen.y - 10);
+                ctx.lineTo(screen.x + 7, screen.y);
+                ctx.lineTo(screen.x, screen.y + 10);
+                ctx.lineTo(screen.x - 7, screen.y);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                break;
+            case "structure_tower": 
+                // Tower is a crown shape with a T inside
+                ctx.beginPath();
+                ctx.moveTo(screen.x - 8, screen.y + 10);
+                ctx.lineTo(screen.x - 4, screen.y - 10);
+                ctx.lineTo(screen.x, screen.y + 5);
+                ctx.lineTo(screen.x + 4, screen.y - 10);
+                ctx.lineTo(screen.x + 8, screen.y + 10);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                break;
+            default:
+                console.log(mapData);
+            // Add more cases for other structure types as needed
+        }
+    }
+}
+
 function drawEntities(entities) {
     if (!entities) return;
 
     // First pass: draw targeting lines
-    for (let entity of entities) {
-        if (entity.target_id !== undefined) {
-            const attacker_screen = worldToScreen(entity.position.x, entity.position.z);
+    if (layerVisibility.targetingLines) {
+        for (let entity of entities) {
+            if (entity.target_id !== undefined) {
+                const attacker_screen = worldToScreen(entity.position.x, entity.position.z);
 
-            // Find target entity
-            const target = entities.find(e => e.id === entity.target_id);
-            if (target) {
-                const target_screen = worldToScreen(target.position.x, target.position.z);
+                // Find target entity
+                const target = entities.find(e => e.id === entity.target_id);
+                if (target) {
+                    const target_screen = worldToScreen(target.position.x, target.position.z);
 
-                // Draw targeting line
-                ctx.strokeStyle = entity.team_id === 1 ? '#4080ff' : '#ff4080';
-                ctx.lineWidth = 2;
-                ctx.setLineDash([5, 5]);
-                ctx.beginPath();
-                ctx.moveTo(attacker_screen.x, attacker_screen.y);
-                ctx.lineTo(target_screen.x, target_screen.y);
-                ctx.stroke();
-                ctx.setLineDash([]);
+                    // Draw targeting line
+                    ctx.strokeStyle = entity.team_id === 1 ? '#4080ff' : '#ff4080';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([5, 5]);
+                    ctx.beginPath();
+                    ctx.moveTo(attacker_screen.x, attacker_screen.y);
+                    ctx.lineTo(target_screen.x, target_screen.y);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
 
-                // Draw arrowhead at target
-                const angle = Math.atan2(target_screen.y - attacker_screen.y, target_screen.x - attacker_screen.x);
-                const arrowSize = 8;
+                    // Draw arrowhead at target
+                    const angle = Math.atan2(target_screen.y - attacker_screen.y, target_screen.x - attacker_screen.x);
+                    const arrowSize = 8;
 
-                ctx.fillStyle = entity.team_id === 1 ? '#4080ff' : '#ff4080';
-                ctx.beginPath();
-                ctx.moveTo(target_screen.x, target_screen.y);
-                ctx.lineTo(target_screen.x - arrowSize * Math.cos(angle - Math.PI / 6), target_screen.y - arrowSize * Math.sin(angle - Math.PI / 6));
-                ctx.lineTo(target_screen.x - arrowSize * Math.cos(angle + Math.PI / 6), target_screen.y - arrowSize * Math.sin(angle + Math.PI / 6));
-                ctx.closePath();
-                ctx.fill();
+                    ctx.fillStyle = entity.team_id === 1 ? '#4080ff' : '#ff4080';
+                    ctx.beginPath();
+                    ctx.moveTo(target_screen.x, target_screen.y);
+                    ctx.lineTo(target_screen.x - arrowSize * Math.cos(angle - Math.PI / 6), target_screen.y - arrowSize * Math.sin(angle - Math.PI / 6));
+                    ctx.lineTo(target_screen.x - arrowSize * Math.cos(angle + Math.PI / 6), target_screen.y - arrowSize * Math.sin(angle + Math.PI / 6));
+                    ctx.closePath();
+                    ctx.fill();
+                }
             }
         }
     }
@@ -375,6 +443,7 @@ function updateEntitiesList(entities) {
 
 
 
-// Update every 500ms
-setInterval(updateView, 500);
+// Update every 50ms
+initializeLegendToggles();
+setInterval(updateView, 50);
 updateView();
