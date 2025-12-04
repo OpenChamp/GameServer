@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<entity
+    xmlns="https://open-champ.com/mySchema"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="https://open-champ.com/mySchema ../_entity.xsd"
+    id="core"
+>
+    <stats
+        max_health="5000"
+        health="5000"
+        attack_range="20.0"
+        attack_speed="1.0"
+        physical_power="200"
+    />
+    <movement />
+    <state />
+    <network />
+    <attack />
+    <target targeting_mode="NEAREST_ENEMY" />
+    <structure type="core" level="1" />
+</entity>

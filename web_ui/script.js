@@ -297,7 +297,7 @@ function drawStructures(mapData) {
         const screen = worldToScreen(struct.position.x, struct.position.z);
         // Draw structure based on type
         switch (struct.type) {
-            case "structure_core":
+            case "core":
                 // Core is a crystal shape
                 ctx.beginPath();
                 ctx.moveTo(screen.x, screen.y - 10);
@@ -308,7 +308,7 @@ function drawStructures(mapData) {
                 ctx.fill();
                 ctx.stroke();
                 break;
-            case "structure_tower": 
+            case "tower": 
                 // Tower is a crown shape with a T inside
                 ctx.beginPath();
                 ctx.moveTo(screen.x - 8, screen.y + 10);
@@ -322,7 +322,6 @@ function drawStructures(mapData) {
 
                 break;
             default:
-                console.log(mapData);
             // Add more cases for other structure types as needed
         }
     }
@@ -443,7 +442,6 @@ function updateEntitiesList(entities) {
 
 
 
-// Update every 50ms
 initializeLegendToggles();
 setInterval(updateView, 50);
 updateView();

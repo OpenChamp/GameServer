@@ -18,6 +18,7 @@ namespace ComponentTypes {
     constexpr uint32_t MOVEMENT = 2001;
     constexpr uint32_t STATS = 2002;
     constexpr uint32_t NPC = 2003;
+    constexpr uint32_t STRUCTURE = 2010;
     
     // === State Management (2010-2099) ===
     constexpr uint32_t ENTITY_STATE = 2010;

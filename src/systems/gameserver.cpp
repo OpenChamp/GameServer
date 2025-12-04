@@ -9,6 +9,8 @@
 #include <vector>
 
 #include <components/movement.hpp>
+#include <components/structure.hpp>
+#include <components/stats.hpp>
 
 #include <systems/core/wave_system.hpp>
 #include <systems/util/data_loader.hpp>
@@ -43,6 +45,41 @@ ERROR_CODE GameServer::initialize() {
         return ERROR_CODE::ERROR_ENET_CREATION_FAILED;
     }
     
+    // Send structures to EntityManager
+    for (const auto& structure_data : map_opt->structures) {
+        Entity& structure_entity = entity_manager_.create_entity_from_template(structure_data.type);
+        EntityID entity_id = structure_entity.get_id();
+        if (entity_id == INVALID_ENTITY_ID) {
+            LOG_ERROR("Failed to create structure entity from template");
+            continue;
+        }
+        // Set position component
+        auto* move = structure_entity.get_component<Movement>();
+        if (move) {
+            move->position = Vec2(structure_data.position.x, structure_data.position.z);
+        }
+
+        // Set team in Stats component
+        auto* stats = structure_entity.get_component<Stats>();
+        if (stats) {
+            stats->team_id = structure_data.team;
+        }
+
+        // Set structure type in Structure Component
+        auto* structure_comp = structure_entity.get_component<Structure>();
+        if (structure_comp) {
+            structure_comp->type = [&structure_data]() {
+                if (structure_data.type == "core") return StructureType::NEXUS;
+                if (structure_data.type == "tower") return StructureType::TOWER;
+                if (structure_data.type == "inhibitor") return StructureType::INHIBITOR;
+                if (structure_data.type == "ward") return StructureType::WARD;
+                return StructureType::CUSTOM;
+            }();
+        }
+
+        
+    }
+
     // Initialize Navigation
     navigation_service_ = std::make_unique<NavigationService>(map_opt.value());
     
