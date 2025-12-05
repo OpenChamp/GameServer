@@ -1,35 +1,42 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-    <title>GameServer Debugger</title>
+    <title>OpenChamp Debugger</title>
     <link rel="stylesheet" href="styles.css">
-    <link
-  rel="stylesheet"
-  href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"
->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
 </head>
+
 <body>
-    <h1>GameServer Debugger</h1>
-    <h2>Map View</h2>
-    <canvas id="mapCanvas" width="800" height="600"></canvas>
-    
-    <h3>Visualization Legend</h3>
-    <div id="legendContainer" style="font-family: monospace; font-size: 12px; line-height: 1.8;">
-        <div><label><input type="checkbox" class="legend-toggle" data-layer="mapBounds" checked> <span style="color: #664040;"><i class="nf-md-border_all"></i> Map Bounds</span></label> - Dashed line showing map boundary</div>
-        <div><label><input type="checkbox" class="legend-toggle" data-layer="polygonGrid" checked> <span style="color: #6666ff;"><i class="nf-md-table_border"></i> Polygon Grid</span></label> - Spatial acceleration grid cells for pathfinding lookup</div>
-        <div><label><input type="checkbox" class="legend-toggle" data-layer="navmesh" checked> <span style="color: #80ff80;"><i class="nf-md-circle"></i> Vertices</span></label> - Navmesh vertex positions with indices</div>
-        <div><label><input type="checkbox" class="legend-toggle" data-layer="spawnpoints" checked> <span style="color: #ffff00;"><i class="nf-md-flag_variant"></i> Spawnpoints</span></label> - Unit spawn locations</div>
-        <div><label><input type="checkbox" class="legend-toggle" data-layer="structures" checked> <span style="color: #ffa500;"><i class="nf-md-castle"></i> Structures</span></label> - Map structures</div>
-        <div><label><input type="checkbox" class="legend-toggle" data-layer="entities" checked> <span style="color: #4040ff;"><i class="nf-md-shield"></i> Entities</span></label> - Team 1 and Team 2 entities</div>
-        <div><label><input type="checkbox" class="legend-toggle" data-layer="targetingLines" checked> <span style="color: #4da6ff;"><i class="nf-md-arrow_expand"></i> Targeting Lines</span></label> - Lines showing attack targets</div>
+    <div class="grid_container">
+        <div class="top_container" id="TopNav">
+            <div class="collapse-content">
+                <h2 id="Logo">OpenChamp Debugger</h2>
+            </div>
+        </div>
+        <div class="left_container" id="LeftNav">
+            <div class="collapse-content">
+                <h6>Legend</h6>
+                <div id="legendContainer"></div>
+            </div>
+        </div>
+        <div class="map_container" id="MapContainer">
+            <canvas id="mapCanvas" width="800" height="600"></canvas>
+        </div>
+        <div class="right_container" id="RightNav">
+            <div class="collapse-content">
+                <h6>Entities</h6>
+                <div id="entities"></div>
+            </div>
+        </div>
+        <div class="bottom_container" id="BottomNav">
+            <div class="collapse-content">
+                <h2>Game State</h2>
+                <div class="info" id="state"></div>
+            </div>
+        </div>
     </div>
-    
-    <h2>Game State</h2>
-    <div class="info" id="state"></div>
-    
-    <h2>Entities</h2>
-    <div id="entities"></div>
-    
     <script src="script.js"></script>
 </body>
+
 </html>

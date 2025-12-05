@@ -12,14 +12,46 @@ const layerVisibility = {
     targetingLines: true
 };
 
+const legend_array = [
+    { name: 'Map Bounds', layer: 'mapBounds', color: '#664040' },
+    { name: 'Polygon Grid', layer: 'polygonGrid', color: '#6666ff' },
+    { name: 'Navmesh', layer: 'navmesh', color: '#80ff80' },
+    { name: 'Spawnpoints', layer: 'spawnpoints', color: '#ffff00' },
+    { name: 'Structures', layer: 'structures', color: '#ffa500' },
+    { name: 'Entities', layer: 'entities', color: '#4040ff' },
+    { name: 'Targeting Lines', layer: 'targetingLines', color: '#4da6ff' }
+]
+
 // Initialize legend toggle event listeners
 function initializeLegendToggles() {
-    const toggles = document.querySelectorAll('.legend-toggle');
-    toggles.forEach(toggle => {
-        toggle.addEventListener('change', (e) => {
+    const legendDiv = document.getElementById('legendContainer');
+    legend_array.forEach(item => {
+        // Node Generation
+        const label = document.createElement('label');
+        label.style.display = 'block';
+        label.style.marginBottom = '4px';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'legend-toggle';
+        checkbox.dataset.layer = item.layer;
+        checkbox.checked = layerVisibility[item.layer];
+        const colorBox = document.createElement('span');
+        colorBox.style.display = 'inline-block';
+        colorBox.style.width = '12px';
+        colorBox.style.height = '12px';
+        colorBox.style.backgroundColor = item.color;
+        colorBox.style.marginRight = '6px';
+        // Listeners
+        checkbox.addEventListener('click', (e) => {
+            e.stopPropagation();
             const layer = e.target.dataset.layer;
             layerVisibility[layer] = e.target.checked;
         });
+        // Assembly
+        label.appendChild(checkbox);
+        label.appendChild(colorBox);
+        label.appendChild(document.createTextNode(item.name));
+        legendDiv.appendChild(label);
     });
 }
 
@@ -422,7 +454,7 @@ function updateEntitiesList(entities) {
 
     for (let entity of entities) {
         const el = document.createElement('div');
-        el.className = 'entity';
+        el.className = 'entity t'+entity.team_id;
 
         let targetStr = '';
         if (entity.target_id !== undefined) {
@@ -439,7 +471,6 @@ function updateEntitiesList(entities) {
         div.appendChild(el);
     }
 }
-
 
 
 initializeLegendToggles();

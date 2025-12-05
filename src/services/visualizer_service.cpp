@@ -371,13 +371,17 @@ std::string VisualizerService::get_game_state_json() const {
         auto all_entities = entity_manager_->get_entities_with_component<Movement>();
         bool first = true;
         for (auto* entity : all_entities) {
-            if (!first) json << ",";
-            first = false;
-            
+            if (!entity) continue;
+
             auto* move = entity->get_component<Movement>();
             auto* stats = entity->get_component<Stats>();
             auto* state = entity->get_component<EntityStateComponent>();
             auto* intent = entity->get_component<IntentComponent>();
+
+            if (!move || !stats || !state || !intent) continue;
+            
+            if (!first) json << ",";
+            first = false;
             
             json << "{";
             json << "\"id\":" << entity->get_id() << ",";
