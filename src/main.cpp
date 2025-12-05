@@ -1,4 +1,5 @@
 #define ENET_IMPLEMENTATION
+#define _CRT_SECURE_NO_WARNINGS
 /* Standard Libraries */
 #include <stdio.h>
 #include <csignal>
@@ -6,7 +7,7 @@
 #include <stdexcept>
 
 /* Project Headers */
-#include "gameserver.hpp"
+#include <systems/gameserver.hpp>
 
 // === Configuration Constants ===
 constexpr int DEFAULT_PORT = 7000;
@@ -39,6 +40,8 @@ static std::string get_map_path_from_env() {
     LOG_INFO("No map file path or name specified in environment, using default map");
     return "";
 }
+
+
 void signal_handler(int signal) {
     if (signal == SIGINT && g_server_instance) {
         LOG_INFO("Shutdown signal received. Cleaning up...");
@@ -47,9 +50,28 @@ void signal_handler(int signal) {
 }
 
 // === Main Entry Point === //
-int main() {
+int main(int argc, char* argv[]) {
     LOG_INFO("OpenChamp GameServer Starting");
     LOG_INFO("==============================");
+    
+    // Parse command-line arguments
+    bool enable_visualizer = false;
+    uint16_t visualizer_port = 8080;
+    
+    for (int i = 1; i < argc; ++i) {
+        std::string arg(argv[i]);
+        if (arg == "--visualize") {
+            enable_visualizer = true;
+        } else if (arg == "--visualize-port" && i + 1 < argc) {
+            try {
+                visualizer_port = std::stoi(argv[++i]);
+                LOG_INFO("Visualizer port set to %u", visualizer_port);
+            } catch (...) {
+                LOG_ERROR("Invalid visualizer port, using default %u", visualizer_port);
+            }
+        }
+    }
+    LOG_INFO("Visualizer: %s ", enable_visualizer ? ("Enabled on port " + std::to_string(visualizer_port)).c_str() : "No");
     
     // Parse port from environment
     int env_port = DEFAULT_PORT;
@@ -60,16 +82,13 @@ int main() {
             if (env_port <= MIN_PORT || env_port > MAX_PORT) {
                 LOG_ERROR("Invalid port number: %s. Using default %d", port_env, DEFAULT_PORT);
                 env_port = DEFAULT_PORT;
-            } else {
-                LOG_INFO("Using port from environment: %d\n", env_port);
-            }
+            } 
         } catch (const std::exception& e) {
             LOG_ERROR("Failed to parse SERVER_PORT: %s. Using default %d", e.what(), DEFAULT_PORT);
             env_port = DEFAULT_PORT;
         }
-    } else {
-        LOG_INFO("No port specified in environment, using default %d", DEFAULT_PORT);
     }
+    LOG_INFO("Game Port: %d", env_port);
     
     // Parse max clients from environment
     int max_clients = DEFAULT_MAX_CLIENTS;
@@ -77,19 +96,16 @@ int main() {
     if (clients_env != nullptr) {
         try {
             max_clients = std::stoi(clients_env);
-            if (max_clients <= 0 || max_clients > MAX_CLIENTS_LIMIT) {
+            if (max_clients < 0 || max_clients > MAX_CLIENTS_LIMIT) {
                 LOG_ERROR("Invalid MAX_CLIENTS: %s. Using default %d", clients_env, DEFAULT_MAX_CLIENTS);
                 max_clients = DEFAULT_MAX_CLIENTS;
-            } else {
-                LOG_INFO("Using MAX_CLIENTS from environment: %d", max_clients);
             }
         } catch (const std::exception& e) {
             LOG_ERROR("Failed to parse MAX_CLIENTS: %s. Using default %d", e.what(), DEFAULT_MAX_CLIENTS);
             max_clients = DEFAULT_MAX_CLIENTS;
         }
-    } else {
-        LOG_INFO("No MAX_CLIENTS specified in environment, using default %d", DEFAULT_MAX_CLIENTS);
-    }
+    } 
+    LOG_INFO("Max Clients: %d", max_clients);
     
     // Create and initialize server
     GameServer server(env_port, max_clients, get_map_path_from_env());
@@ -98,6 +114,11 @@ int main() {
     if (init_result != ERROR_CODE::ERROR_NONE) {
         LOG_ERROR("Failed to initialize server: %d", (int)(init_result));
         return (int)(init_result);
+    }
+    
+    // Start visualizer if requested
+    if (enable_visualizer) {
+        server.start_visualizer(visualizer_port);
     }
     
     // Register signal handler for graceful shutdown

@@ -19,7 +19,6 @@ struct Stats : public Component {
     float max_mana = 0.0f;
     float mana = 0.0f;
     float move_speed = 0.0f;
-    int level = 1;
     
     // === Offensive Stats ===
     float attack_range = 1.0f;
@@ -45,6 +44,15 @@ struct Stats : public Component {
     float omni_vamp = 0.0f; // Percentage of damage dealt returned as health
     float leech = 0.0f; // Percentage of damage dealt returned as mana
     float vision_range = 1.0f;
+
+    // === Experience & Gold ===
+    int level = 1;
+    float level_curve = 1.5f;
+    int total_experience = 0;
+    int experience = 0;
+
+    int total_gold = 0;
+    int gold = 0;
 
     // === Team & Faction ===
     uint8_t team_id = 0; // [0 = Neutral, 1 = Team 1, 2 = Team 2] -- cmkrist 15/11/2025

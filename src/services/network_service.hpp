@@ -7,9 +7,9 @@
 
 #include <enet.h>
 
-#include <systems/math.hpp>
-#include <systems/packet_validator.hpp>
-#include "components/errors.hpp"
+#include <libs/math.hpp>
+#include <systems/util/packet_validator.hpp>
+#include <components/engine_errors.hpp>
 
 /**
  * Manages low level networking so that consumers can simply exchange packets
@@ -35,6 +35,12 @@ public:
      * Stop hosting the network server
      */
     void disconnect();
+
+    /**
+     * Disconnect a specific client.
+     * @param client_id ID of the client to disconnect
+     */
+    void disconnect_client(const std::string& client_id);
 
     /**
      * Send a packet of specified type to a peer.

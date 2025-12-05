@@ -1,7 +1,7 @@
-#include "network_service.hpp"
+#include <services/network_service.hpp>
 
-#include "systems/math.hpp"
-#include "libs/log.hpp"
+#include <libs/math.hpp>
+#include <libs/log.hpp>
 
 struct NetworkService::NetworkBackend {
     NetworkBackend() {
@@ -33,9 +33,7 @@ NetworkService::~NetworkService() {
 ERROR_CODE NetworkService::start_server() {
     LOG_INFO("Initializing GameServer on port %d with max %d clients", port_, max_clients_);
     // Initialize ENet
-    int enet_init_result = enet_initialize();
-    LOG_INFO("enet_initialize() returned: %d", enet_init_result);
-    
+    int enet_init_result = enet_initialize();    
     if (enet_init_result != 0) {
         LOG_ERROR("Failed to initialize ENet");
         return ERROR_CODE::ERROR_ENET_INIT_FAILED;
@@ -82,6 +80,19 @@ void NetworkService::disconnect() {
         backend_->enet_server_ = nullptr;
     }
     is_connected_ = false;
+}
+
+void NetworkService::disconnect_client(const std::string& client_id) {
+    auto it = backend_->clients_.find(client_id);
+    if (it != backend_->clients_.end()) {
+        ENetPeer* peer = it->second;
+        if (peer) {
+            // Request graceful disconnection
+            enet_peer_disconnect(peer, 0);
+        }
+        // Remove from clients map
+        backend_->clients_.erase(it);
+    }
 }
 
 bool NetworkService::run_callbacks() {
@@ -287,7 +298,6 @@ void NetworkService::broadcast_packet(const PACKET_TYPE& packet_type) {
     // Broadcast to all connected peers
     if (backend_->enet_server_) {
         enet_host_broadcast(backend_->enet_server_, 0, packet);
-        LOG_DEBUG("Broadcasted packet type %d to all clients", (int)packet_type);
     } else {
         enet_packet_destroy(packet);
     }

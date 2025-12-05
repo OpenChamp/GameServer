@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>OpenChamp Debugger</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+</head>
+
+<body>
+    <div class="grid_container">
+        <div class="top_container" id="TopNav">
+            <div class="collapse-content">
+                <h2 id="Logo">OpenChamp Debugger</h2>
+            </div>
+        </div>
+        <div class="left_container" id="LeftNav">
+            <div class="collapse-content">
+                <h6>Legend</h6>
+                <div id="legendContainer"></div>
+            </div>
+        </div>
+        <div class="map_container" id="MapContainer">
+            <canvas id="mapCanvas" width="800" height="600"></canvas>
+        </div>
+        <div class="right_container" id="RightNav">
+            <div class="collapse-content">
+                <h6>Entities</h6>
+                <div id="entities"></div>
+            </div>
+        </div>
+        <div class="bottom_container" id="BottomNav">
+            <div class="collapse-content">
+                <h2>Game State</h2>
+                <div class="info" id="state"></div>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+
+</html>

@@ -5,20 +5,26 @@
 #include <optional>
 
 #include <components/map.hpp>
-#include <systems/math.hpp>
+#include <libs/math.hpp>
 
 class PathRequest {
 public:
     uint32_t entity_id;
     float entity_pathing_radius;
-    Vec3 current_position;
-    Vec3 destination;
+    Vec2 current_position;
+    Vec2 destination;
+    bool is_player_input = false;
+    
+    // For priority queue ordering: higher priority value = processes first
+    int priority() const {
+        return is_player_input ? 1 : 0;
+    }
 };
 
 class PathResult {
 public:
     uint32_t entity_id;
-    std::vector<Vec3> path;
+    std::vector<Vec2> path;
 };
 
 class NavigationService {

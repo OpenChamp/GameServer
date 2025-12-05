@@ -1,7 +1,7 @@
 #pragma once
 
-#include "component.hpp"
-#include "../systems/math.hpp"
+#include <components/component.hpp>
+#include <libs/math.hpp>
 #include <vector>
 
 /**

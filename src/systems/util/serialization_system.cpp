@@ -1,0 +1,178 @@
+#include <systems/util/serialization_system.hpp>
+#include <components/stats.hpp>
+
+std::vector<uint8_t> SerializationSystem::serialize_packet(PACKET_TYPE packet_type) {
+    std::vector<uint8_t> packet_data;
+    packet_data.push_back(static_cast<uint8_t>(packet_type));
+    return packet_data;
+}
+
+std::vector<uint8_t> SerializationSystem::serialize_packet(PACKET_TYPE packet_type, const std::string& data) {
+    // Verify data size fits in uint16_t
+    if (data.size() > uint16_t(-1)) {
+        return std::vector<uint8_t>();  // Return empty vector on error
+    }
+
+    std::vector<uint8_t> packet_data;
+    packet_data.push_back(static_cast<uint8_t>(packet_type));
+    
+    // 2 bytes for length (Big-endian)
+    uint16_t data_length = static_cast<uint16_t>(data.size());
+    serialize_uint16_be(data_length, packet_data);
+    
+    // Add data
+    packet_data.insert(packet_data.end(), data.begin(), data.end());
+    
+    return packet_data;
+}
+
+std::vector<uint8_t> SerializationSystem::serialize_entity_position(uint32_t entity_id, const Vec2& position) {
+    std::vector<uint8_t> packet_data;
+    packet_data.push_back(static_cast<uint8_t>(PACKET_TYPE::ENTITY_POSITION));
+    
+    // Entity ID (4 bytes, little-endian)
+    serialize_uint32(entity_id, packet_data);
+    
+    // Position X (4 bytes float, little-endian)
+    serialize_float(position.x, packet_data);
+    
+    // Position Y (4 bytes float, little-endian)
+    serialize_float(position.y, packet_data);
+    
+    return packet_data;
+}
+
+std::vector<uint8_t> SerializationSystem::serialize_entity_spawn(uint32_t entity_id, const Vec2& position, uint8_t team_id, const std::string& entity_type) {
+    std::vector<uint8_t> packet_data;
+    packet_data.push_back(static_cast<uint8_t>(PACKET_TYPE::ENTITY_SPAWN));
+    
+    // Entity ID (4 bytes, little-endian)
+    serialize_uint32(entity_id, packet_data);
+    
+    // Position X (4 bytes float, little-endian)
+    serialize_float(position.x, packet_data);
+    
+    // Position Y (4 bytes float, little-endian)
+    serialize_float(position.y, packet_data);
+    
+    // Team ID (1 byte)
+    packet_data.push_back(team_id);
+    
+    // Entity type string length (4 bytes, little-endian)
+    uint32_t type_length = static_cast<uint32_t>(entity_type.length());
+    serialize_uint32(type_length, packet_data);
+    
+    // Entity type string data
+    for (char c : entity_type) {
+        packet_data.push_back(static_cast<uint8_t>(c));
+    }
+    
+    return packet_data;
+}
+
+void SerializationSystem::serialize_uint32(uint32_t value, std::vector<uint8_t>& output) {
+    output.push_back((value & 0xFF));
+    output.push_back((value >> 8) & 0xFF);
+    output.push_back((value >> 16) & 0xFF);
+    output.push_back((value >> 24) & 0xFF);
+}
+
+void SerializationSystem::serialize_uint16_be(uint16_t value, std::vector<uint8_t>& output) {
+    output.push_back((value >> 8) & 0xFF);
+    output.push_back(value & 0xFF);
+}
+
+void SerializationSystem::serialize_float(float value, std::vector<uint8_t>& output) {
+    uint32_t int_value = reinterpret_cast<uint32_t&>(value);
+    serialize_uint32(int_value, output);
+}
+
+std::vector<uint8_t> SerializationSystem::serialize_entity_stats(uint32_t entity_id, const Stats& stats) {
+    std::vector<uint8_t> packet_data;
+    packet_data.push_back(static_cast<uint8_t>(PACKET_TYPE::ENTITY_STATS));
+    
+    // Entity ID (4 bytes, little-endian)
+    serialize_uint32(entity_id, packet_data);
+    
+    // Health (4 bytes float, little-endian)
+    serialize_float(stats.health, packet_data);
+    
+    // Max Health (4 bytes float, little-endian)
+    serialize_float(stats.max_health, packet_data);
+    
+    // Mana (4 bytes float, little-endian)
+    serialize_float(stats.mana, packet_data);
+    
+    // Max Mana (4 bytes float, little-endian)
+    serialize_float(stats.max_mana, packet_data);
+    
+    // Level (4 bytes int, little-endian as uint32_t)
+    serialize_uint32(static_cast<uint32_t>(stats.level), packet_data);
+    
+    return packet_data;
+}
+
+std::vector<uint8_t> SerializationSystem::serialize_entity_stat_change(uint32_t entity_id, const std::string& stat_name, const std::string& stat_value) {
+    std::vector<uint8_t> packet_data;
+    packet_data.push_back(static_cast<uint8_t>(PACKET_TYPE::ENTITY_STATS));
+    
+    // Entity ID (4 bytes, little-endian)
+    serialize_uint32(entity_id, packet_data);
+    
+    // Stat name length (4 bytes, little-endian)
+    uint32_t name_length = static_cast<uint32_t>(stat_name.length());
+    serialize_uint32(name_length, packet_data);
+    
+    // Stat name string
+    for (char c : stat_name) {
+        packet_data.push_back(static_cast<uint8_t>(c));
+    }
+    
+    // Stat value length (4 bytes, little-endian)
+    uint32_t value_length = static_cast<uint32_t>(stat_value.length());
+    serialize_uint32(value_length, packet_data);
+    
+    // Stat value string
+    for (char c : stat_value) {
+        packet_data.push_back(static_cast<uint8_t>(c));
+    }
+    
+    return packet_data;
+}
+
+std::vector<uint8_t> SerializationSystem::serialize_entity_state(uint32_t entity_id, uint8_t state_value) {
+    std::vector<uint8_t> packet_data;
+    packet_data.push_back(static_cast<uint8_t>(PACKET_TYPE::ENTITY_STATE));
+    
+    // Entity ID (4 bytes, little-endian)
+    serialize_uint32(entity_id, packet_data);
+    
+    // State value (1 byte)
+    packet_data.push_back(state_value);
+    
+    return packet_data;
+}
+
+std::vector<uint8_t> SerializationSystem::serialize_combat_event(uint32_t attacker_id, uint32_t target_id,
+                                                                float damage_dealt, uint8_t damage_type, bool was_critical) {
+    std::vector<uint8_t> packet_data;
+    packet_data.push_back(static_cast<uint8_t>(PACKET_TYPE::COMBAT_EVENT));
+    
+    // Attacker ID (4 bytes, little-endian)
+    serialize_uint32(attacker_id, packet_data);
+    
+    // Target ID (4 bytes, little-endian)
+    serialize_uint32(target_id, packet_data);
+    
+    // Damage (4 bytes float, little-endian)
+    serialize_float(damage_dealt, packet_data);
+    
+    // Damage Type (1 byte)
+    packet_data.push_back(damage_type);
+    
+    // Was Critical (1 byte: 0 or 1)
+    packet_data.push_back(was_critical ? 1 : 0);
+    
+    return packet_data;
+}
+

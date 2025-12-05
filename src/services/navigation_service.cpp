@@ -8,22 +8,44 @@
 #include <condition_variable>
 
 #include <libs/log.hpp>
-#include <libs/frame_timer.h>
 
 #include <components/map.hpp>
+
+// Comparator for priority queue: higher priority (player input) comes first
+struct PathRequestComparator {
+    bool operator()(const PathRequest& a, const PathRequest& b) const {
+        // In priority_queue, returning true means 'a' should come AFTER 'b'
+        // So we return true if a has LOWER priority than b
+        return a.priority() < b.priority();
+    }
+};
 
 struct NavigationService::NavServiceBackend {
     std::thread worker;
     Map map;
-    std::atomic<bool> running{true};
-    std::queue<PathRequest> requests;
+    std::atomic<bool> running{false};
+    std::priority_queue<PathRequest, std::vector<PathRequest>, PathRequestComparator> requests;
     std::queue<PathResult> results;
     std::queue<PathResult> waitingResults;
     std::mutex mtx;
-    // TODO what frame rate should this run at? infinite? - ploinky 14/11/2025
-    FrameTimer frame_timer = FrameTimer(30);
 
     NavServiceBackend() {
+        // Don't start thread yet - wait for map to be assigned
+    }
+    
+    void start_worker() {
+        running = true;
+        
+        // Verify grid was built during map loading
+        if (map.grid_width > 0 && map.grid_height > 0) {
+            LOG_INFO("NavigationService: Using precomputed grid (size: %dx%d, cell_size: %.1f)",
+                     map.grid_width, map.grid_height, map.grid_cell_size);
+        } else {
+            LOG_ERROR("NavigationService: Navmesh grid not precomputed. Closing navigation service.");
+            running = false;
+            return;
+        }
+        
         worker = std::thread([this]() {
             LOG_INFO("Spinning off NavigationService backend thread");
             start_work();
@@ -54,7 +76,7 @@ struct NavigationService::NavServiceBackend {
                 continue;
             }
 
-            PathRequest req = requests.front();
+            PathRequest req = requests.top();
             requests.pop();
 
             // we have our request, we can unlock for now and do the pathing
@@ -64,38 +86,40 @@ struct NavigationService::NavServiceBackend {
             // the lock is unlocked, take your time
             // =================================================================
 
-            // Perform A* pathfinding on the 2D navmesh
-            Vec2 start_2d(req.current_position.x, req.current_position.z);
-            Vec2 goal_2d(req.destination.x, req.destination.z);
-
             // Create local copies of the navmesh data for thread-safe pathfinding
             std::vector<Vec2> navmesh_vertices = this->map.vertices;
             std::vector<std::vector<uint32_t>> navmesh_polygons = this->map.polygons;
 
+            // Create grid structure reference from map component
+            AStarPathfinder::NavGrid grid;
+            grid.grid_cells = this->map.grid_cells;
+            grid.grid_origin = this->map.grid_origin;
+            grid.grid_cell_size = this->map.grid_cell_size;
+            grid.grid_width = this->map.grid_width;
+            grid.grid_height = this->map.grid_height;
+
             std::vector<Vec2> path_2d = AStarPathfinder::FindPath(
-                start_2d,
-                goal_2d,
+                req.current_position,
+                req.destination,
                 navmesh_vertices,
                 navmesh_polygons,
-                req.entity_pathing_radius
+                req.entity_pathing_radius,
+                &grid  // Pass grid from map component
             );
 
-            // Convert the 2D path back to 3D (keeping Y from destination for now)
+            // Store the 2D path directly
             PathResult res = PathResult();
             res.entity_id = req.entity_id;
-            res.path.reserve(path_2d.size());
-            for (const auto& waypoint_2d : path_2d) {
-                res.path.push_back(Vec3(waypoint_2d.x, req.destination.y, waypoint_2d.y));
-            }
+            res.path = path_2d;
             
             if (res.path.empty()) {
                 LOG_WARN("Navigation: Entity %u path from (%.1f, %.1f) to (%.1f, %.1f) returned EMPTY PATH", 
-                         req.entity_id, start_2d.x, start_2d.y, goal_2d.x, goal_2d.y);
+                         req.entity_id, req.current_position.x, req.current_position.y, req.destination.x, req.destination.y);
             } else {
                 LOG_DEBUG("Navigation: Entity %u path with %zu waypoints", req.entity_id, res.path.size());
             }
 
-            // we have our result, so let's hand it back to the main thread now
+            // we have our result, back to the main thread
             if(!lock.try_lock()) {
                 // we couldn't lock, so cache this result for later
                 // if we don't cache and submit this later, the request will be lost
@@ -129,6 +153,7 @@ struct NavigationService::NavServiceBackend {
 NavigationService::NavigationService(Map map_object) {
     impl_ = std::make_unique<NavServiceBackend>();
     impl_->map = std::move(map_object);
+    impl_->start_worker();  // Start thread after map is assigned
 }
 
 NavigationService::~NavigationService() = default;

@@ -4,9 +4,12 @@
 #include <memory>
 #include <unordered_map>
 #include <vector>
+// Components
+#include <components/component.hpp>
+#include <components/template.hpp>
+#include <components/movement.hpp>
 
-#include "components/component.hpp"
-#include <systems/data_loader.hpp>
+#include <systems/util/data_loader.hpp>
 
 /**
  * Represents a unique entity ID in the ECS system.
@@ -121,8 +124,7 @@ class EntityManager {
 public:
     EntityManager() : next_entity_id_(1) {
         // TODO probably use system independent path separator - ploinky 14/11/2025
-        LOG_INFO("Loading templates from ./data");
-        for(std::string file_name : DataLoader::list_files_from_directory("./data", ".xml")) {
+        for(std::string file_name : DataLoader::list_files_from_directory("./data/entities", ".xml")) {
             EntityTemplate entity_template = DataLoader::load_entity_template(file_name);
             if(entity_template_cache.find(entity_template.id) != entity_template_cache.end()) {
                 LOG_WARN("OVERWRITING EXISTING TEMPLATE: %s", entity_template.id.c_str());
@@ -160,6 +162,9 @@ public:
             std::unique_ptr<Component> comp_copy = comp->clone();
             new_entity.add_component(std::move(comp_copy));
         }
+
+        new_entity.add_component(std::make_unique<TemplateComponent>(entity_type_id));
+
         // Register in cache
         entity_pools_[entity_type_id].push_back(new_entity.get_id());
         dirty_entities.erase(std::remove(dirty_entities.begin(), dirty_entities.end(), new_entity.get_id()), dirty_entities.end()); // remove from dirty entities -- cmkrist 15/11/2025
@@ -253,6 +258,44 @@ public:
      */
     std::unordered_map<EntityID, Entity>& get_all_entities() {
         return entities_;
+    }
+    
+    /**
+     * Get entity template by ID without creating an entity.
+     * Useful for querying template data (e.g., collision radius) without consuming an entity ID.
+     * @param template_id The ID of the template to retrieve
+     * @return Const pointer to the template, or nullptr if not found
+     */
+    const EntityTemplate* get_template(const std::string& template_id) const {
+        auto it = entity_template_cache.find(template_id);
+        if (it == entity_template_cache.end()) {
+            return nullptr;
+        }
+        return &it->second;
+    }
+    
+    /**
+     * Get collision radius for a template without creating an entity.
+     * Used for pathfinding and collision queries during spawn phase.
+     * @param template_id The ID of the template
+     * @return Collision radius (default 0.5f if not found)
+     */
+    float get_template_collision_radius(const std::string& template_id) const {
+        const EntityTemplate* template_data = get_template(template_id);
+        if (!template_data) {
+            return 0.5f;  // Default
+        }
+        
+        // Search for Movement component in template (TYPE_ID = 2001)
+        for (const auto& comp : template_data->component_templates) {
+            if (comp->get_type_id() == 2001) {  // Movement component type ID
+                const Movement* move_template = static_cast<const Movement*>(comp.get());
+                if (move_template) {
+                    return move_template->collision_radius;
+                }
+            }
+        }
+        return 0.5f;  // Default
     }
 
 private:

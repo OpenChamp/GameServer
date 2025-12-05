@@ -1,27 +1,24 @@
 #pragma once
 
-#include "component.hpp"
-#include "../systems/math.hpp"
+#include <components/component.hpp>
+#include <libs/math.hpp>
 #include <vector>
 #include <cstdint>
 
 /**
  * Pathfinding component for entities.
  * Stores path waypoints and tracks progress along the path.
+ * Entity state is tracked in EntityStateComponent (PATHFINDING_WAITING, MOVING, STUCK).
  */
 struct PathfindingComponent : public Component {
-    std::vector<Vec3> waypoints;
-    int current_waypoint_index = 0;
-    uint32_t target_spawnpoint_id = 0;
-    
-    bool is_waiting_for_path = false;
+    // Current path waypoints (2D positions)
+    std::vector<Vec2> waypoints;
+
     // Request ID for tracking async pathfinding requests
     uint32_t path_request_id = 0;
-    // Track last position to detect if entity is stuck
-    Vec2 last_position = Vec2(0.0f, 0.0f);
-    float stuck_time_ms = 0.0f;
-    // Stuck Timeout Threshold
-    static constexpr float STUCK_THRESHOLD_MS = 2000.0f;
-    
+
+    // True if the entity has requested a path and is currently waiting for it to be calculated
+    bool waiting_for_path = false;
+
     COMPONENT_TYPE_ID(PathfindingComponent, 2009)
 };

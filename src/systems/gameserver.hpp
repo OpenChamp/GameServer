@@ -6,24 +6,25 @@
 #include <memory>
 #include <atomic>
 #include <chrono>
-#include "components/errors.hpp"
-#include "components/game_state.hpp"
-#include "components/map.hpp"
-#include "libs/frame_timer.h"
 
-// Entities
-#include "entities/player.hpp"
+// Components
+#include <components/engine_errors.hpp>
+#include <components/game_state.hpp>
+#include <components/map.hpp>
+
+// Libraries
+#include <libs/frame_timer.h>
+
 // Systems
-#include "combat_system.hpp"
-#include "entity_manager.hpp"
-#include "map_system.hpp"
-#include "movement_system.hpp"
-#include "network_sync_system.hpp"
-#include "serialization_system.hpp"
-#include "wave_system.hpp"
+#include <systems/util/player_manager.hpp>
+#include <systems/util/packet_handler.hpp>
+#include <systems/gameplay_coordinator.hpp>
+// Systems
+#include <systems/entity_manager.hpp>
 // Services
-#include "services/navigation_service.hpp"
-#include "services/network_service.hpp"
+#include <services/navigation_service.hpp>
+#include <services/network_service.hpp>
+#include <services/visualizer_service.hpp>
 /**
  * Central GameServer class encapsulating all server state and logic.
  * Replaces global state management with proper OOP encapsulation.
@@ -75,7 +76,7 @@ public:
      * Check if all players in lobby are ready.
      * @return true if all connected players have ready=true
      */
-    bool is_lobby_ready() const;
+    bool is_lobby_ready();
     
     /**
      * Get current game state.
@@ -108,19 +109,20 @@ public:
      */
     bool is_lobby_full() const;
     
+    /**
+     * Start the debug visualizer web server.
+     * @param port Port to listen on (default 8080)
+     */
+    void start_visualizer(uint16_t port = 8080);
+    
 private:
     // Network configuration
     int max_clients_;
     std::string map_path_;
     std::unique_ptr<Map> map_pointer_;
     NetworkService network_service_;
-    // Systems
-    std::unique_ptr<WaveSystem> wave_system_;
-    MovementSystem movement_system_;
-    NetworkSyncSystem network_sync_system_;
-
+    
     // Server configuration
-
     // Server tick rate in milliseconds
     // TODO this should be configurable, probably - ploinky 14/11/2025
     FrameTimer frame_timer_ = FrameTimer(30);
@@ -129,15 +131,20 @@ private:
     std::atomic<bool> shutdown_requested_;
     GAME_STATE current_state_;
     
-    // Minion broadcast tracking (for rate limiting)
-    std::chrono::high_resolution_clock::time_point last_minion_broadcast_;
-    static constexpr float MINION_BROADCAST_INTERVAL = 0.05f;  // 50ms = ~20 updates/sec
+    // Managers
+    PlayerManager player_manager_;
+    PacketHandler packet_handler_;
+    GameplayCoordinator gameplay_;
     
-    // Player management (using hash map for O(1) lookup)
-    std::unordered_map<std::string, Player> players_;
+    /**
+     * Initialize GameplayCoordinator with required services.
+     * Must be called after map and navigation service are initialized.
+     */
+    void initialize_coordinator();
     
     // Services (Separate thread)
     std::unique_ptr<NavigationService> navigation_service_;
+    std::unique_ptr<VisualizerService> debug_visualizer_;
 
     // ECS systems
     EntityManager entity_manager_;
@@ -155,15 +162,6 @@ private:
      * @param packet The packet the is incoming
      */
     void on_packet_received(std::string client_id, const uint8_t* data, size_t length);
-
-    /**
-     * Handle player ready status packet.
-     * @param client_id ID of the client that has submitted the status
-     * @param packet_data Pointer to packet data
-     * @param packet_length Length of packet data
-     * @return true if handled successfully
-     */
-    bool handle_player_ready_packet(std::string client_id, const uint8_t* packet_data, size_t packet_length);
     
     /**
      * Handle client disconnect.
@@ -175,16 +173,6 @@ private:
      * Perform a single frame tick: process game logic, update states, and broadcast as needed.
      */
     void frame_tick();
-    /**
-     * Broadcast player list to all connected clients.
-     */
-    void broadcast_player_list();
-    
-    /**
-     * Broadcast all active minion states to all connected clients.
-     * Rate-limited to avoid excessive network traffic.
-     */
-    void broadcast_minion_states();
     
     /**
      * Validate state transition rules.

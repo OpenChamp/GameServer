@@ -1,17 +1,60 @@
 {
     "version": "0.2.0",
     "configurations": [
-        
         {
-            "name": "Win(x64) Debug",
+            "name": "Win(D) Visual",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/_output/windows_x64/Debug/gameserver.exe",
+            "args": ["--visualize"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [{"name": "MAP_NAME", "value": "konda"}],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Win(D) Visual Autostart",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/_output/windows_x64/Debug/gameserver.exe",
+            "args": ["--visualize"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [{"name": "MAP_NAME", "value": "konda"}, {"name": "MAX_CLIENTS", "value": "0"}],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Win(D) Debug",
             "type": "cppvsdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/_output/windows_x64/Debug/gameserver.exe",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
-            "environment": [],
-            "console": "externalTerminal"
+            "environment": [{"name": "MAP_NAME", "value": "konda"}],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Win(R) Visual",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/_output/windows_x64/Release/gameserver.exe",
+            "args": ["--visualize"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [{"name": "MAP_NAME", "value": "konda"}],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Win(R) Debug",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/_output/windows_x64/Release/gameserver.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [{"name": "MAP_NAME", "value": "konda"}],
+            "console": "integratedTerminal"
         }
     ]
 }
