@@ -54,6 +54,7 @@ void BrainSystem::handle_attack_intent(const SystemContext& ctx, Entity* entity)
 
     // Move into range if too far away
     if((target_movement->position - entity_movement->position).length() > stats->attack_range) {
+        state->current_state = EntityState::MOVING;
         attack->target = std::nullopt; // Cancel any ongoing attack
         entity_movement->target = target_movement->position;
         return;
@@ -61,17 +62,20 @@ void BrainSystem::handle_attack_intent(const SystemContext& ctx, Entity* entity)
 
     // Start attack if in range
     if(!attack->target.has_value() || attack->target.value() != target->get_id()) {
+        state->current_state = EntityState::ATTACKING;
         entity_movement->target = std::nullopt; // Stop moving
         attack->target = intent->target_entity_id;
+        return;
     }
 }
 
 void BrainSystem::handle_move_intent(const SystemContext& ctx, Entity* entity) {
     Movement* movement = entity->get_component<Movement>();
     IntentComponent* intent = entity->get_component<IntentComponent>();
-
+    EntityStateComponent* state = entity->get_component<EntityStateComponent>();
     // Set the movement target if required
     if(!movement->target.has_value() || movement->target.value() != intent->target_position) {
+        state->current_state = EntityState::MOVING;
         movement->target = intent->target_position;
     }
 }

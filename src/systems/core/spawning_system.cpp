@@ -52,7 +52,7 @@ EntityID SpawningSystem::spawn_entity_from_template(const SystemContext& ctx,
             
             // Search for enemy core in map structures
             for (const auto& structure : ctx.map->structures) {
-                if (structure.type == "structure_core" && structure.team == enemy_team) {
+                if (structure.type == "core" && structure.team == enemy_team) {
                     // Convert 3D position to 2D (use X and Z, ignore Y)
                     enemy_core_position = Vec2(structure.position.x, structure.position.z);
                     LOG_DEBUG("Found enemy core for team %u at position (%.1f, %.1f)", 
@@ -60,6 +60,13 @@ EntityID SpawningSystem::spawn_entity_from_template(const SystemContext& ctx,
                     break;
                 }
             }
+            
+            if (enemy_core_position.x == 0.0f && enemy_core_position.y == 0.0f) {
+                LOG_WARN("Could not find enemy core for team %u in %zu structures. Minion %u will default to (0,0)",
+                         enemy_team, ctx.map->structures.size(), entity_id);
+            }
+        } else {
+            LOG_ERROR("Map context is null! Minion %u objective cannot be set properly", entity_id);
         }
         
         npc->objective = enemy_core_position;
